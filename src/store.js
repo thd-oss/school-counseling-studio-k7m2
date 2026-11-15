@@ -23,6 +23,7 @@
       activePackId: "pack-default-vol1",
       customPacks: [],
       mcqProgress: {},
+      volumeExamProgress: {},
       shortAnswerChecked: {},
       essayProgress: {},
     };
@@ -33,7 +34,9 @@
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (!raw) return defaultState();
       const parsed = JSON.parse(raw);
-      return Object.assign(defaultState(), parsed || {});
+      const merged = Object.assign(defaultState(), parsed || {});
+      merged.volumeExamProgress = merged.volumeExamProgress || {};
+      return merged;
     } catch (e) {
       return defaultState();
     }
@@ -95,28 +98,72 @@
     if (!state.mcqProgress[packId]) {
       state.mcqProgress[packId] = {
         round: 1,
+        chapterRounds: {},
         answers: {},
         bookmarks: {},
         roundHistory: [],
       };
     }
+    if (!state.mcqProgress[packId].chapterRounds) {
+      state.mcqProgress[packId].chapterRounds = {};
+    }
     return state.mcqProgress[packId];
+  }
+
+  function ensureVolumeExam(packId) {
+    if (!state.volumeExamProgress) state.volumeExamProgress = {};
+    if (!state.volumeExamProgress[packId]) {
+      state.volumeExamProgress[packId] = {
+        round: 1,
+        orderMode: "chapter",
+        shuffledIds: [],
+        answers: {},
+        shortAnswerChecked: {},
+        essays: {},
+        roundHistory: [],
+      };
+    }
+    return state.volumeExamProgress[packId];
+  }
+
+  function defaultEssayDraftObj() {
+    return {
+      mode: "scaffold",
+      scaffold: { diagnosis: "", theory: "", intervention: "" },
+      unifiedText: "",
+      rubricChecks: {},
+      selfScore: 0,
+      submittedAt: null,
+      updatedAt: null,
+    };
   }
 
   function ensurePackEssay(packId, essayId) {
     if (!state.essayProgress[packId]) state.essayProgress[packId] = {};
     if (!state.essayProgress[packId][essayId]) {
-      state.essayProgress[packId][essayId] = {
-        mode: "scaffold",
-        scaffold: { diagnosis: "", theory: "", intervention: "" },
-        unifiedText: "",
-        rubricChecks: {},
-        selfScore: 0,
-        submittedAt: null,
-        updatedAt: null,
-      };
+      state.essayProgress[packId][essayId] = defaultEssayDraftObj();
     }
     return state.essayProgress[packId][essayId];
+  }
+
+  function ensureVolumeExamEssay(packId, essayId) {
+    const exam = ensureVolumeExam(packId);
+    if (!exam.essays) exam.essays = {};
+    if (!exam.essays[essayId]) {
+      exam.essays[essayId] = defaultEssayDraftObj();
+    }
+    return exam.essays[essayId];
+  }
+
+  function shuffleArray(arr) {
+    const copy = arr.slice();
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = copy[i];
+      copy[i] = copy[j];
+      copy[j] = tmp;
+    }
+    return copy;
   }
 
   window.StudyStore = {
@@ -128,7 +175,13 @@
       return () => listeners.delete(fn);
     },
     async hydrateFromIdbIfEmpty() {
-      if (Object.keys(state.readSections).length > 0 || state.customPacks.length > 0) return false;
+      if (
+        Object.keys(state.readSections).length > 0 ||
+        state.customPacks.length > 0 ||
+        Object.keys(state.volumeExamProgress || {}).length > 0
+      ) {
+        return false;
+      }
       const db = await openIdb();
       if (!db) return false;
       return new Promise((resolve) => {
@@ -138,6 +191,7 @@
           req.onsuccess = () => {
             if (req.result && typeof req.result === "object") {
               state = Object.assign(defaultState(), req.result);
+              state.volumeExamProgress = state.volumeExamProgress || {};
               persist(true);
               resolve(true);
             } else {
@@ -215,6 +269,109 @@
       }
       persist();
     },
+    getChapterMcqRound(packId, chapterNo) {
+      const rec = ensurePackMcq(packId);
+      return rec.chapterRounds[chapterNo] || 1;
+    },
+    resetChapterMcq(packId, chapterNo, chapterQuestionIds, onlyWrong) {
+      const rec = ensurePackMcq(packId);
+      const idSet = new Set(chapterQuestionIds || []);
+      const curRound = rec.chapterRounds[chapterNo] || 1;
+      const chEntries = Object.entries(rec.answers).filter(([id]) => idSet.has(id));
+      const correctCount = chEntries.filter(([, v]) => v.correct).length;
+      const wrongIds = chEntries.filter(([, v]) => !v.correct).map(([id]) => id);
+      if (chEntries.length > 0) {
+        rec.roundHistory.unshift({
+          scope: "chapter",
+          chapter: chapterNo,
+          round: curRound,
+          score: correctCount,
+          attempted: chEntries.length,
+          total: idSet.size,
+          completedAt: new Date().toISOString(),
+          wrongIds,
+        });
+      }
+      rec.chapterRounds[chapterNo] = curRound + 1;
+      idSet.forEach((id) => {
+        const ans = rec.answers[id];
+        if (!ans) return;
+        if (!onlyWrong || !ans.correct) {
+          delete rec.answers[id];
+        }
+      });
+      persist();
+    },
+    getVolumeExamState(packId) {
+      return ensureVolumeExam(packId);
+    },
+    setVolumeExamOrder(packId, orderMode, allQuestionIds, forceReshuffle) {
+      const exam = ensureVolumeExam(packId);
+      exam.orderMode = orderMode === "shuffle" ? "shuffle" : "chapter";
+      const ids = allQuestionIds || [];
+      if (exam.orderMode === "shuffle" && (forceReshuffle || (exam.shuffledIds || []).length !== ids.length)) {
+        exam.shuffledIds = shuffleArray(ids);
+      }
+      persist();
+      return exam;
+    },
+    recordVolumeExamMcq(packId, qId, selectedOpt, correctOpt) {
+      const exam = ensureVolumeExam(packId);
+      exam.answers[qId] = {
+        selected: selectedOpt,
+        correct: selectedOpt === correctOpt,
+        checkedAt: new Date().toISOString(),
+      };
+      persist();
+    },
+    startNewVolumeExamRound(packId, allQuestionIds, onlyWrong) {
+      const exam = ensureVolumeExam(packId);
+      const ids = allQuestionIds || [];
+      const answeredEntries = Object.entries(exam.answers);
+      const correctCount = answeredEntries.filter(([, v]) => v.correct).length;
+      const wrongIds = answeredEntries.filter(([, v]) => !v.correct).map(([id]) => id);
+      if (answeredEntries.length > 0) {
+        exam.roundHistory.unshift({
+          scope: "volume",
+          round: exam.round,
+          score: correctCount,
+          attempted: answeredEntries.length,
+          total: ids.length,
+          completedAt: new Date().toISOString(),
+          wrongIds,
+        });
+      }
+      exam.round += 1;
+      if (onlyWrong) {
+        const nextAnswers = {};
+        answeredEntries.forEach(([id, v]) => {
+          if (v.correct) nextAnswers[id] = v;
+        });
+        exam.answers = nextAnswers;
+      } else {
+        exam.answers = {};
+      }
+      if (exam.orderMode === "shuffle") {
+        exam.shuffledIds = shuffleArray(ids);
+      }
+      persist();
+    },
+    toggleVolumeShortAnswer(packId, saId) {
+      const exam = ensureVolumeExam(packId);
+      if (!exam.shortAnswerChecked) exam.shortAnswerChecked = {};
+      if (exam.shortAnswerChecked[saId]) delete exam.shortAnswerChecked[saId];
+      else exam.shortAnswerChecked[saId] = true;
+      persist();
+    },
+    getVolumeExamEssayDraft(packId, essayId) {
+      return ensureVolumeExamEssay(packId, essayId);
+    },
+    updateVolumeExamEssayDraft(packId, essayId, patch) {
+      const draft = ensureVolumeExamEssay(packId, essayId);
+      Object.assign(draft, patch, { updatedAt: new Date().toISOString() });
+      persist();
+      return draft;
+    },
     toggleShortAnswer(saId) {
       if (state.shortAnswerChecked[saId]) delete state.shortAnswerChecked[saId];
       else state.shortAnswerChecked[saId] = true;
@@ -255,6 +412,7 @@
         throw new Error("올바른 학습 백업 JSON 파일이 아닙니다.");
       }
       state = Object.assign(defaultState(), parsed);
+      state.volumeExamProgress = state.volumeExamProgress || {};
       persist();
       return state;
     },

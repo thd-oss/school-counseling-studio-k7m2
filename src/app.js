@@ -10,13 +10,15 @@
   const CIRCLES = ["①", "②", "③", "④", "⑤"];
 
   let ui = {
-    view: "dashboard", // "dashboard" | "chapter"
+    view: "dashboard", // "dashboard" | "chapter" | "exam"
     chapter: 1,
     mode: "learn", // "learn" | "mcq" | "essay"
-    mcqScope: "chapter", // "chapter" | "all"
+    examTab: "mcq", // "mcq" | "essay" | "report"
     mcqFilter: "all", // "all" | "unanswered" | "wrong" | "bookmarked"
-    essayScope: "chapter", // "chapter" | "all"
+    examMcqFilter: "all", // "all" | "unanswered" | "wrong" | "bookmarked"
+    examEssayChapter: 0, // 0 = all chapters, 1..6 = chapter filter
     selectedEssayId: null,
+    selectedExamEssayId: null,
     selectedPromptChapters: [1, 2, 3, 4, 5, 6],
     pendingImportResult: null,
   };
@@ -54,10 +56,20 @@
     `;
   }
 
+  function isEssayCompleted(essayMap, essayId) {
+    const d = essayMap[essayId];
+    if (!d) return false;
+    const hasText =
+      (d.unifiedText && d.unifiedText.trim().length > 10) ||
+      (d.scaffold && (d.scaffold.diagnosis + d.scaffold.theory + d.scaffold.intervention).trim().length > 10);
+    return hasText || Object.values(d.rubricChecks || {}).some(Boolean);
+  }
+
   function computeMetrics() {
     const state = STORE.getState();
     const pack = getActivePack();
     const mcqState = STORE.getPackMcqState(pack.id);
+    const examState = STORE.getVolumeExamState(pack.id);
     const totalSections = DATA.chapters.reduce((acc, c) => acc + c.coreSections.length, 0);
     const readCount = DATA.chapters.reduce(
       (acc, c) => acc + c.coreSections.filter((s) => Boolean(state.readSections[s.id])).length,
@@ -68,16 +80,14 @@
     const attemptedMcqs = mcqs.filter((m) => mcqState.answers[m.id]);
     const correctMcqs = attemptedMcqs.filter((m) => mcqState.answers[m.id].correct);
 
+    const examAttemptedMcqs = mcqs.filter((m) => examState.answers[m.id]);
+    const examCorrectMcqs = examAttemptedMcqs.filter((m) => examState.answers[m.id].correct);
+
     const essays = pack.essays || [];
     const essayMap = state.essayProgress[pack.id] || {};
-    const doneEssays = essays.filter((e) => {
-      const d = essayMap[e.id];
-      if (!d) return false;
-      const hasText =
-        (d.unifiedText && d.unifiedText.trim().length > 10) ||
-        (d.scaffold && (d.scaffold.diagnosis + d.scaffold.theory + d.scaffold.intervention).trim().length > 10);
-      return hasText || Object.values(d.rubricChecks || {}).some(Boolean);
-    });
+    const doneEssays = essays.filter((e) => isEssayCompleted(essayMap, e.id));
+    const examEssayMap = examState.essays || {};
+    const examDoneEssays = essays.filter((e) => isEssayCompleted(examEssayMap, e.id));
 
     const byChapter = DATA.chapters.map((ch) => {
       const chSecs = ch.coreSections;
@@ -85,8 +95,11 @@
       const chMcqs = mcqs.filter((m) => m.chapter === ch.chapter);
       const chMcqDone = chMcqs.filter((m) => mcqState.answers[m.id]);
       const chMcqCorrect = chMcqDone.filter((m) => mcqState.answers[m.id].correct).length;
+      const chExamDone = chMcqs.filter((m) => examState.answers[m.id]);
+      const chExamCorrect = chExamDone.filter((m) => examState.answers[m.id].correct).length;
       const chEssays = essays.filter((e) => e.chapter === ch.chapter);
       const chEssayDone = chEssays.filter((e) => doneEssays.some((x) => x.id === e.id)).length;
+      const chExamEssayDone = chEssays.filter((e) => examDoneEssays.some((x) => x.id === e.id)).length;
 
       return {
         chapter: ch.chapter,
@@ -101,9 +114,14 @@
         mcqCorrect: chMcqCorrect,
         mcqTotal: chMcqs.length,
         mcqPct: chMcqs.length ? Math.round((chMcqDone.length / chMcqs.length) * 100) : 0,
+        examAttempted: chExamDone.length,
+        examCorrect: chExamCorrect,
+        examPct: chMcqs.length ? Math.round((chExamDone.length / chMcqs.length) * 100) : 0,
+        examAccuracy: chExamDone.length ? Math.round((chExamCorrect / chExamDone.length) * 100) : 0,
         essayDone: chEssayDone,
         essayTotal: chEssays.length,
         essayPct: chEssays.length ? Math.round((chEssayDone / chEssays.length) * 100) : 0,
+        examEssayDone: chExamEssayDone,
       };
     });
 
@@ -111,6 +129,7 @@
       totalSections,
       readCount,
       readPct: totalSections ? Math.round((readCount / totalSections) * 100) : 0,
+      allChaptersRead: totalSections > 0 && readCount === totalSections,
       mcqAttempted: attemptedMcqs.length,
       mcqCorrect: correctMcqs.length,
       mcqTotal: mcqs.length,
@@ -120,6 +139,12 @@
       essayTotal: essays.length,
       essayPct: essays.length ? Math.round((doneEssays.length / essays.length) * 100) : 0,
       round: mcqState.round,
+      examRound: examState.round,
+      examAttempted: examAttemptedMcqs.length,
+      examCorrect: examCorrectMcqs.length,
+      examPct: mcqs.length ? Math.round((examAttemptedMcqs.length / mcqs.length) * 100) : 0,
+      examAccuracy: examAttemptedMcqs.length ? Math.round((examCorrectMcqs.length / examAttemptedMcqs.length) * 100) : 0,
+      examEssayDone: examDoneEssays.length,
       byChapter,
     };
   }
@@ -171,6 +196,9 @@
           isCurrent ? 'aria-current="page"' : ""
         } data-nav-ch="${c.chapter}">${c.chapter}장 · ${esc(c.meta.shortTitle)}</button>`;
       }),
+      `<button type="button" class="chap-pill is-exam-pill ${ui.view === "exam" ? "is-active" : ""}" ${
+        ui.view === "exam" ? 'aria-current="page"' : ""
+      } data-nav-exam="true">★ 상권 통합 연습</button>`,
     ].join("");
 
     const packBtn = document.getElementById("open-gemini-btn");
@@ -187,6 +215,9 @@
         navigate({ view: "chapter", chapter: parseInt(b.dataset.navCh, 10), mode: ui.mode || "learn" })
       )
     );
+    chNav.querySelectorAll("[data-nav-exam]").forEach((b) =>
+      b.addEventListener("click", () => navigate({ view: "exam", examTab: ui.examTab || "mcq" }))
+    );
 
     const activePill = chNav.querySelector('[aria-current="page"]');
     if (activePill && typeof chNav.scrollTo === "function" && chNav.clientWidth > 0) {
@@ -197,16 +228,46 @@
 
   function renderSubbar() {
     const subbar = document.getElementById("chapter-subbar");
-    if (ui.view !== "chapter") {
+    if (ui.view === "dashboard") {
       subbar.hidden = true;
       return;
     }
     subbar.hidden = false;
-    const ch = DATA.chapters.find((c) => c.chapter === ui.chapter);
+    if (ui.view === "exam") {
+      const examTabs = [
+        { id: "mcq", label: "1. 통합 객관식 실전" },
+        { id: "essay", label: "2. 통합 실상황 논술" },
+        { id: "report", label: "3. 단원별 성취 리포트" },
+      ];
+      subbar.innerHTML = `
+        <div class="subbar-inner">
+          <div class="subbar-title">
+            <span class="subbar-code">VOLUME 1 EXAM</span>
+            <span class="subbar-name">상권(01~06장) 전 범위 통합 실전 연습</span>
+          </div>
+          <nav class="mode-tabs" aria-label="상권 통합 연습 단계">
+            ${examTabs
+              .map(
+                (t) =>
+                  `<button type="button" class="mode-tab" data-exam-tab="${t.id}" ${
+                    ui.examTab === t.id ? 'aria-current="page"' : ""
+                  }>${t.label}</button>`
+              )
+              .join("")}
+          </nav>
+        </div>
+      `;
+      subbar.querySelectorAll("[data-exam-tab]").forEach((btn) => {
+        btn.addEventListener("click", () => navigate({ view: "exam", examTab: btn.dataset.examTab }));
+      });
+      return;
+    }
+
+    const ch = DATA.chapters.find((c) => c.chapter === ui.chapter) || DATA.chapters[0];
     const tabs = [
-      { id: "learn", label: "1. 스크롤 요약 학습" },
-      { id: "mcq", label: "2. 객관식 문제 풀기" },
-      { id: "essay", label: "3. 실상황 논술형 해결" },
+      { id: "learn", label: "1. 요약 학습" },
+      { id: "mcq", label: "2. 장 마무리 객관식" },
+      { id: "essay", label: "3. 장 실상황 논술" },
     ];
     subbar.innerHTML = `
       <div class="subbar-inner">
@@ -214,16 +275,16 @@
           <span class="subbar-code">${esc(ch.code)}</span>
           <span class="subbar-name">${esc(ch.fullTitle)}</span>
         </div>
-        <div class="mode-tabs" role="tablist" aria-label="장 학습 모드">
+        <nav class="mode-tabs" aria-label="장 학습 단계">
           ${tabs
             .map(
               (t) =>
-                `<button type="button" class="mode-tab" role="tab" data-mode-tab="${t.id}" aria-selected="${
-                  ui.mode === t.id ? "true" : "false"
-                }">${t.label}</button>`
+                `<button type="button" class="mode-tab" data-mode-tab="${t.id}" ${
+                  ui.mode === t.id ? 'aria-current="page"' : ""
+                }>${t.label}</button>`
             )
             .join("")}
-        </div>
+        </nav>
       </div>
     `;
     subbar.querySelectorAll("[data-mode-tab]").forEach((btn) => {
@@ -238,6 +299,7 @@
         view: ui.view,
         chapter: ui.chapter,
         mode: ui.mode,
+        examTab: ui.examTab,
         scrollY: 0,
       });
     }
@@ -251,14 +313,18 @@
     const pack = getActivePack();
     const lastPos = STORE.getState().lastPosition || { view: "chapter", chapter: 1, mode: "learn", sectionId: "sec-1-1" };
     const lastCh = DATA.chapters.find((c) => c.chapter === (lastPos.chapter || 1)) || DATA.chapters[0];
-    const modeLabel = lastPos.mode === "mcq" ? "객관식 문제" : lastPos.mode === "essay" ? "실상황 논술형" : "요약 학습";
+    const modeLabel = lastPos.mode === "mcq" ? "장 마무리 객관식" : lastPos.mode === "essay" ? "장 실상황 논술" : "요약 학습";
+    const resumeLabel =
+      lastPos.view === "exam"
+        ? `상권(01~06장) 통합 실전 연습 · ${lastPos.examTab === "essay" ? "통합 논술" : lastPos.examTab === "report" ? "성취 리포트" : "통합 객관식"}`
+        : `${lastCh.fullTitle} · ${modeLabel}`;
 
     root.innerHTML = `
       <section class="apple-hero">
         <div>
           <span class="hero-eyebrow">학교상담과 생활지도 · 상권 (01~06장)</span>
           <h1 class="hero-title">읽고, 도식으로 꿰뚫고,<br>현장 사례로 완성하는 전공 학습</h1>
-          <p class="hero-desc">모든 절의 핵심 개념·표·원문 법령 링크를 스크롤 학습으로 익히고, 기본 35문항·25개 실상황 논술은 물론 제미나이(Gemini) <code>.txt</code> 문제팩을 불러와 회차별로 무제한 반복 훈련할 수 있습니다.</p>
+          <p class="hero-desc">각 장의 요약 학습이 끝나면 장별 확인 문제를 풀고, 상권 완독 후에는 전 범위를 백지상태로 다시 섞어 푸는 <strong>★ 상권 통합 연습</strong>으로 복습을 완성할 수 있습니다.</p>
           <div class="hero-cta-row">
             <button type="button" class="btn btn-primary" id="hero-start-ch1">제01장부터 학습 시작하기 →</button>
             <button type="button" class="btn" id="hero-open-gemini">제미나이 문제팩(.txt) 불러오기</button>
@@ -267,8 +333,8 @@
         </div>
         <div class="resume-panel">
           <h3>최근 자동 저장된 학습 위치</h3>
-          <div class="resume-loc">${esc(lastCh.fullTitle)} · ${esc(modeLabel)}</div>
-          <div class="resume-meta">이 브라우저에 모든 진도·체크·논술 초안이 실시간 자동 저장됩니다.</div>
+          <div class="resume-loc">${esc(resumeLabel)}</div>
+          <div class="resume-meta">장별 학습 진도와 권 통합 실전 기록이 각각 독립적으로 자동 저장됩니다.</div>
           <button type="button" class="btn btn-primary" style="width:100%" id="hero-resume-btn">마지막 위치에서 이어하기 →</button>
         </div>
       </section>
@@ -279,38 +345,53 @@
           <div class="kpi-text">
             <h4>상권 요약 완독률</h4>
             <div class="kpi-val">${m.readCount} / ${m.totalSections}절</div>
-            <div class="kpi-sub">핵심 절 학습 체크 기준</div>
+            <div class="kpi-sub">각 절 하단 완료 체크 기준</div>
           </div>
         </div>
         <div class="kpi-card">
-          ${renderProgressRingHtml(m.mcqPct, "객관식 풀이율", "#5e5ce6")}
+          ${renderProgressRingHtml(m.mcqPct, "장별 객관식 풀이율", "#5e5ce6")}
           <div class="kpi-text">
-            <h4>객관식 풀이 · 정답률</h4>
+            <h4>장별 확인 객관식</h4>
             <div class="kpi-val">${m.mcqCorrect} / ${m.mcqAttempted} <small style="font-weight:600;color:var(--text-muted)">(${m.mcqAccuracy}%)</small></div>
-            <div class="kpi-sub">전체 ${m.mcqTotal}문항 중 진행률</div>
+            <div class="kpi-sub">전체 ${m.mcqTotal}문항 중 장별 누적</div>
           </div>
         </div>
         <div class="kpi-card">
-          ${renderProgressRingHtml(m.essayPct, "논술형 해결율", "#008060")}
+          ${renderProgressRingHtml(m.essayPct, "장별 논술 해결률", "#008060")}
           <div class="kpi-text">
-            <h4>실상황 논술 해결률</h4>
+            <h4>장별 실상황 논술</h4>
             <div class="kpi-val">${m.essayDone} / ${m.essayTotal}문항</div>
             <div class="kpi-sub">작성 또는 채점 루브릭 점검</div>
           </div>
         </div>
         <div class="kpi-card">
-          ${renderProgressRingHtml(100, "활성 문제팩", "#bf5a00")}
+          ${renderProgressRingHtml(m.examPct, "권 통합 실전율", "#bf5a00")}
           <div class="kpi-text">
-            <h4>활성 문제팩 · 회차</h4>
-            <div class="kpi-val">${m.round}회차 진행 중</div>
+            <h4>상권 통합 실전 (${m.examRound}회차)</h4>
+            <div class="kpi-val">${m.examCorrect} / ${m.examAttempted} <small style="font-weight:600;color:var(--text-muted)">(${m.examAccuracy}%)</small></div>
             <div class="kpi-sub">${esc(pack.name)}</div>
           </div>
         </div>
       </section>
 
+      <section class="flow-gate-card is-exam-callout" aria-label="상권 통합 연습 바로가기">
+        <div>
+          <span class="hero-eyebrow" style="margin-bottom:8px">2-TRACK EXAM · 장별 진도 보존형 권 통합 복습</span>
+          <h2 style="margin:0 0 4px;font-size:1.22rem;letter-spacing:-0.02em">
+            ${m.allChaptersRead ? "🎓 상권 38개 절 완독! 전 범위 통합 실전 연습을 시작해 보세요" : "★ 한 권(01~06장) 통합 실전 연습장"}
+          </h2>
+          <p style="margin:0;font-size:0.88rem;color:var(--text-secondary)">
+            요약 완독 <strong>${m.readCount}/${m.totalSections}절</strong> · 통합 객관식 <strong>${m.examAttempted}/${m.mcqTotal}문항</strong>(정답률 ${m.examAccuracy}%) · 통합 논술 <strong>${m.examEssayDone}/${m.essayTotal}문항</strong>. 장별 학습 정답과 분리되어 언제든 백지·랜덤 순서로 반복 풀이할 수 있습니다.
+          </p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn btn-primary" id="hero-to-exam">★ 상권 전 범위 통합 연습문제 풀기 →</button>
+        </div>
+      </section>
+
       <div class="section-heading">
         <h2>장별 숙달도 진도표 (Chapter Mastery Matrix)</h2>
-        <span>각 장의 요약 완독·객관식·논술 진행률을 한눈에 보고 원하는 모드로 바로 진입하세요</span>
+        <span>각 장의 요약 완독·장 마무리 객관식·논술 진행률을 확인하고 원하는 단계로 바로 진입하세요</span>
       </div>
 
       <section class="matrix-grid">
@@ -358,7 +439,12 @@
     root.querySelector("#hero-start-ch1").addEventListener("click", () => navigate({ view: "chapter", chapter: 1, mode: "learn" }));
     root.querySelector("#hero-open-gemini").addEventListener("click", () => openGeminiModal());
     root.querySelector("#hero-open-progress").addEventListener("click", () => openProgressModal());
+    root.querySelector("#hero-to-exam").addEventListener("click", () => navigate({ view: "exam", examTab: "mcq" }));
     root.querySelector("#hero-resume-btn").addEventListener("click", () => {
+      if (lastPos.view === "exam") {
+        navigate({ view: "exam", examTab: lastPos.examTab || "mcq" });
+        return;
+      }
       navigate({
         view: "chapter",
         chapter: lastPos.chapter || 1,
@@ -436,9 +522,10 @@
           <section id="diag-anchor-${ch.chapter}" tabindex="-1" class="diag-mount"></section>
 
           ${ch.coreSections
-            .map((sec) => {
+            .map((sec, idx) => {
               const isDone = Boolean(state.readSections[sec.id]);
               const cur = sec.curated || {};
+              const nextSec = ch.coreSections[idx + 1] || null;
               return `
               <article class="sec-article" id="${esc(sec.id)}" tabindex="-1">
                 <div class="sec-top">
@@ -446,9 +533,9 @@
                     <span class="sec-num">SECTION ${esc(sec.secNo)}</span>
                     <h2 class="sec-title">${esc(sec.secNo)} ${esc(sec.title)}</h2>
                   </div>
-                  <button type="button" class="btn complete-btn ${isDone ? "is-done" : ""}" data-toggle-read="${esc(sec.id)}">
-                    ${isDone ? "✓ 학습 완료됨" : "○ 학습 완료 체크"}
-                  </button>
+                  <span class="sec-status-pill ${isDone ? "is-done" : ""}" data-sec-badge="${esc(sec.id)}">
+                    ${isDone ? "✓ 학습 완료" : "학습 전"}
+                  </span>
                 </div>
 
                 <div class="sec-takeaway">${esc(cur.heroTakeaway)}</div>
@@ -488,6 +575,21 @@
                       .join("")}
                   </div>
                 </details>
+                <footer class="sec-footer">
+                  <div class="sec-footer-meta ${isDone ? "is-done" : ""}" data-sec-foot-msg="${esc(sec.id)}">
+                    ${isDone ? `✓ ${esc(sec.secNo)}절 학습 완료로 체크되었습니다.` : "이 절의 요약과 원문을 끝까지 읽었다면 아래 버튼으로 학습 완료를 체크하세요."}
+                  </div>
+                  <div class="sec-footer-actions">
+                    <button type="button" class="btn complete-btn ${isDone ? "is-done" : ""}" data-toggle-read="${esc(sec.id)}">
+                      ${isDone ? "✓ 학습 완료됨" : "○ 이 절 학습 완료 체크"}
+                    </button>
+                    ${
+                      nextSec
+                        ? `<button type="button" class="btn btn-primary" data-complete-and-next="${esc(sec.id)}" data-next-sec="${esc(nextSec.id)}">완료 체크 후 ${esc(nextSec.secNo)}절로 이동 ↓</button>`
+                        : `<button type="button" class="btn btn-primary" data-complete-and-quiz="${esc(sec.id)}">✓ 완료 체크 후 제0${ch.chapter}장 객관식 풀기 →</button>`
+                    }
+                  </div>
+                </footer>
               </article>
             `;
             })
@@ -520,14 +622,15 @@
               : ""
           }
 
-          <div class="toolbar-card" style="justify-content:space-between">
+          <div class="flow-gate-card">
             <div>
-              <strong>${esc(ch.code)} 핵심 요약 학습을 마치셨나요?</strong>
-              <div style="font-size:0.86rem;color:var(--text-muted)">바로 이어서 객관식 복습문제와 실상황 대입 논술형 문항으로 숙달도를 점검해 보세요.</div>
+              <span class="concept-tag" id="learn-gate-count" style="background:var(--accent-soft);color:var(--accent);margin-bottom:8px">${ch.coreSections.filter((s) => state.readSections[s.id]).length}/${ch.coreSections.length}절 학습 완료</span>
+              <h3>${esc(ch.code)} 핵심 요약 학습을 마치셨나요?</h3>
+              <p>각 절 하단에서 완료 체크를 마쳤다면 바로 제0${ch.chapter}장 객관식 연습문제로 이해도를 확인하고, 실상황 논술형으로 연결해 보세요.</p>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
-              <button type="button" class="btn btn-primary" id="cta-to-mcq">객관식 문제 풀러 가기 →</button>
-              <button type="button" class="btn" id="cta-to-essay">실상황 논술형 해결하기 →</button>
+              <button type="button" class="btn btn-primary" id="cta-to-mcq">2단계: 제0${ch.chapter}장 객관식 풀러 가기 →</button>
+              <button type="button" class="btn" id="cta-to-essay">3단계: 제0${ch.chapter}장 논술형 풀기 →</button>
             </div>
           </div>
         </div>
@@ -537,18 +640,63 @@
     // Render interactive diagram for this chapter
     DIAGRAMS.renderChapterDiagram(root.querySelector(`#diag-anchor-${ch.chapter}`), ch);
 
+    function syncSectionUi(secId, done) {
+      const sec = ch.coreSections.find((s) => s.id === secId);
+      const secNo = sec ? sec.secNo : "";
+      const badge = root.querySelector(`[data-sec-badge="${secId}"]`);
+      if (badge) {
+        badge.classList.toggle("is-done", done);
+        badge.textContent = done ? "✓ 학습 완료" : "학습 전";
+      }
+      const footMsg = root.querySelector(`[data-sec-foot-msg="${secId}"]`);
+      if (footMsg) {
+        footMsg.classList.toggle("is-done", done);
+        footMsg.textContent = done
+          ? `✓ ${secNo}절 학습 완료로 체크되었습니다.`
+          : "이 절의 요약과 원문을 끝까지 읽었다면 아래 버튼으로 학습 완료를 체크하세요.";
+      }
+      const toggleBtn = root.querySelector(`[data-toggle-read="${secId}"]`);
+      if (toggleBtn) {
+        toggleBtn.classList.toggle("is-done", done);
+        toggleBtn.textContent = done ? "✓ 학습 완료됨" : "○ 이 절 학습 완료 체크";
+      }
+      const tocItem = root.querySelector(`[data-toc-for="${secId}"] .toc-check`);
+      if (tocItem) tocItem.textContent = done ? "✓" : "";
+      const doneCount = ch.coreSections.filter((s) => STORE.getState().readSections[s.id]).length;
+      const cntEl = root.querySelector("#toc-progress-count");
+      if (cntEl) cntEl.textContent = `${doneCount}/${ch.coreSections.length}절 완료`;
+      const gateCntEl = root.querySelector("#learn-gate-count");
+      if (gateCntEl) gateCntEl.textContent = `${doneCount}/${ch.coreSections.length}절 학습 완료`;
+    }
+
     // Toggle read button listeners
     root.querySelectorAll("[data-toggle-read]").forEach((btn) => {
       btn.addEventListener("click", () => {
         const secId = btn.dataset.toggleRead;
         const done = STORE.toggleSectionRead(secId);
-        btn.classList.toggle("is-done", done);
-        btn.textContent = done ? "✓ 학습 완료됨" : "○ 학습 완료 체크";
-        const tocItem = root.querySelector(`[data-toc-for="${secId}"] .toc-check`);
-        if (tocItem) tocItem.textContent = done ? "✓" : "";
-        const doneCount = ch.coreSections.filter((s) => STORE.getState().readSections[s.id]).length;
-        const cntEl = root.querySelector("#toc-progress-count");
-        if (cntEl) cntEl.textContent = `${doneCount}/${ch.coreSections.length}절 완료`;
+        syncSectionUi(secId, done);
+      });
+    });
+
+    // Check completion and scroll smoothly to next section
+    root.querySelectorAll("[data-complete-and-next]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const secId = btn.dataset.completeAndNext;
+        const nextId = btn.dataset.nextSec;
+        const done = STORE.toggleSectionRead(secId, true);
+        syncSectionUi(secId, done);
+        const nextEl = nextId ? document.getElementById(nextId) : null;
+        if (nextEl) nextEl.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+
+    // Check completion on last section and move to chapter MCQ
+    root.querySelectorAll("[data-complete-and-quiz]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const secId = btn.dataset.completeAndQuiz;
+        const done = STORE.toggleSectionRead(secId, true);
+        syncSectionUi(secId, done);
+        navigate({ view: "chapter", chapter: ch.chapter, mode: "mcq" });
       });
     });
 
@@ -594,13 +742,362 @@
     targets.forEach((t) => scrollspyObserver.observe(t));
   }
 
-  /* ---------- Mode 2: Multiple-Choice Quiz Arena ---------- */
+  /* ---------- Shared Flow / Question / Essay Rendering Helpers ---------- */
+  function renderFlowGateHtml({ badgeText, title, desc, buttonsHtml, isExamCallout }) {
+    return `
+      <div class="flow-gate-card ${isExamCallout ? "is-exam-callout" : ""}">
+        <div>
+          ${
+            badgeText
+              ? `<span class="concept-tag" style="background:var(--accent-soft);color:var(--accent);margin-bottom:8px">${esc(badgeText)}</span>`
+              : ""
+          }
+          <h3>${esc(title)}</h3>
+          <p>${desc}</p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${buttonsHtml}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderMcqFilterPillsHtml(activeFilter, scopedCount) {
+    const filters = [
+      { id: "all", label: `전체 (${scopedCount})` },
+      { id: "unanswered", label: "미풀이" },
+      { id: "wrong", label: "오답만 모아보기" },
+      { id: "bookmarked", label: "★ 오답/북마크" },
+    ];
+    return `
+      <div class="diag-pill-row">
+        ${filters
+          .map(
+            (f) =>
+              `<button type="button" class="diag-chip ${activeFilter === f.id ? "is-active" : ""}" data-mcq-filter="${f.id}">${f.label}</button>`
+          )
+          .join("")}
+        <button type="button" class="diag-chip" id="mcq-import-cta" style="border-style:dashed;color:var(--accent)">＋ 제미나이 .txt 문제팩 추가</button>
+      </div>
+    `;
+  }
+
+  function renderMcqCardsHtml(filtered, answersMap, bookmarksMap, options = {}) {
+    if (!filtered.length) {
+      return (
+        options.emptyHtml ||
+        `<div class="sec-article"><p style="margin:0;color:var(--text-muted)">선택한 조건에 해당하는 문항이 없습니다. 위 필터를 변경하거나 새 Gemini 문제팩을 불러와 보세요.</p></div>`
+      );
+    }
+    return filtered
+      .map((q) => {
+        const rec = answersMap[q.id];
+        const isBm = Boolean(bookmarksMap[q.id]);
+        return `
+        <article class="mcq-card" id="card-${esc(q.id)}">
+          <div class="mcq-meta">
+            <div class="mcq-badges">
+              <span class="matrix-code">제0${q.chapter}장 · 문항 ${q.num}</span>
+              ${q.sectionRef ? `<span class="concept-tag">${esc(q.sectionRef)}절</span>` : ""}
+              ${q.difficulty ? `<span class="concept-tag">${esc(q.difficulty)}</span>` : ""}
+              ${q.keyArea ? `<span class="concept-tag">${esc(q.keyArea)}</span>` : ""}
+            </div>
+            <button type="button" class="btn btn-sm" data-bm-q="${esc(q.id)}">${isBm ? "★ 북마크됨" : "☆ 북마크"}</button>
+          </div>
+          ${q.contextBox ? `<div class="mcq-context">${q.contextBoxHtml || esc(q.contextBox)}</div>` : ""}
+          <h3 class="mcq-stem">${q.stemHtml || esc(q.stem)}</h3>
+          <div class="mcq-options">
+            ${(q.options || [])
+              .map((optText, i) => {
+                const optNo = i + 1;
+                let cls = "mcq-opt";
+                if (rec) {
+                  if (optNo === q.answer) cls += " is-correct";
+                  else if (optNo === rec.selected && !rec.correct) cls += " is-wrong";
+                }
+                return `<button type="button" class="${cls}" data-pick-q="${esc(q.id)}" data-pick-opt="${optNo}"><span class="opt-num">${
+                  CIRCLES[i] || optNo
+                }</span><span>${esc(optText)}</span></button>`;
+              })
+              .join("")}
+          </div>
+          ${
+            rec
+              ? `
+            <div class="mcq-explain">
+              <p style="margin:0 0 6px;font-weight:800;color:${rec.correct ? "var(--success)" : "var(--danger)"}">
+                ${rec.correct ? `✓ 정답입니다! (${CIRCLES[q.answer - 1] || q.answer})` : `✕ 오답입니다. 정답은 ${CIRCLES[q.answer - 1] || q.answer} 입니다.`}
+              </p>
+              <div>${q.explanationHtml || `<p>${esc(q.explanation)}</p>`}</div>
+              ${q.sources ? `<p style="margin:8px 0 0;font-size:0.8rem;color:var(--text-muted)">근거: ${esc(q.sources)}</p>` : ""}
+            </div>
+          `
+              : ""
+          }
+        </article>
+      `;
+      })
+      .join("");
+  }
+
+  function renderShortAnswerSectionHtml(shortAnswers, checkedMap, eyebrowText, titleText) {
+    if (!shortAnswers || !shortAnswers.length) return "";
+    return `
+      <section class="sec-article" style="margin-top:24px">
+        <span class="sec-num">${esc(eyebrowText)}</span>
+        <h2 class="sec-title">${esc(titleText)}</h2>
+        <div class="diag-grid-2">
+          ${shortAnswers
+            .map((sa) => {
+              const checked = Boolean(checkedMap[sa.id]);
+              return `
+              <div class="diag-card ${checked ? "is-good" : ""}">
+                <h4>단답형 ${sa.num}</h4>
+                <p>${sa.questionHtml || esc(sa.question)}</p>
+                <details class="deep-drawer" style="margin-top:10px">
+                  <summary>정답 및 해설 확인하기</summary>
+                  <div class="deep-body">
+                    <p><strong>정답:</strong> ${esc(sa.answer)}</p>
+                    <p>${esc(sa.explanation)}</p>
+                    <button type="button" class="btn btn-sm ${checked ? "is-done complete-btn" : ""}" data-toggle-sa="${esc(sa.id)}">${
+                checked ? "✓ 인출 확인 완료" : "정답 확인 체크"
+              }</button>
+                  </div>
+                </details>
+              </div>`;
+            })
+            .join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  function bindMcqCardActions(root, { allMcqs, onPick, onBookmark, onToggleSa }) {
+    root.querySelectorAll("[data-pick-q]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const qId = btn.dataset.pickQ;
+        const opt = parseInt(btn.dataset.pickOpt, 10);
+        const q = allMcqs.find((x) => x.id === qId);
+        if (q) onPick(qId, opt, q);
+      });
+    });
+    root.querySelectorAll("[data-bm-q]").forEach((btn) => {
+      btn.addEventListener("click", () => onBookmark(btn.dataset.bmQ));
+    });
+    root.querySelectorAll("[data-toggle-sa]").forEach((btn) => {
+      btn.addEventListener("click", () => onToggleSa(btn.dataset.toggleSa));
+    });
+  }
+
+  function calcEssayKeywordHits(essay, text) {
+    const lower = (text || "").replace(/\s+/g, "").toLowerCase();
+    return (essay.keywords || []).map((kw) => ({
+      kw,
+      hit: kw.replace(/\s+/g, "").length >= 2 && lower.includes(kw.replace(/\s+/g, "").toLowerCase()),
+    }));
+  }
+
+  function renderEssayShellHtml({ scopedEssays, activeEssay, draft, getDraft, emptyHtml }) {
+    if (!activeEssay) {
+      return emptyHtml || `<div class="sec-article"><p style="margin:0;color:var(--text-muted)">이 범위에 등록된 논술형 문항이 없습니다.</p></div>`;
+    }
+    const composed = getComposedEssayText(draft);
+    return `
+      <div class="essay-split">
+        <div class="essay-list">
+          ${scopedEssays
+            .map((e) => {
+              const d = getDraft(e.id);
+              const len = getComposedEssayText(d).trim().length;
+              return `
+              <button type="button" class="essay-item-btn ${e.id === activeEssay.id ? "is-active" : ""}" data-pick-essay="${esc(e.id)}">
+                <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--text-muted)">
+                  <span>제0${e.chapter}장 · 문항 ${e.num}</span>
+                  <span>${len > 0 ? `${len}자 작성` : "미작성"}</span>
+                </div>
+                <h4>${esc(e.title)}</h4>
+              </button>
+            `;
+            })
+            .join("")}
+        </div>
+
+        <section class="essay-workspace">
+          <span class="matrix-code">제0${activeEssay.chapter}장 · 실상황 논술형 ${activeEssay.num}</span>
+          <h2 style="margin:8px 0 14px;font-size:1.35rem;letter-spacing:-0.02em">${esc(activeEssay.title)}</h2>
+
+          <div class="case-box">
+            <h4>[실상황 사례 제시문]</h4>
+            <div>${activeEssay.situationHtml || `<p>${esc(activeEssay.situation)}</p>`}</div>
+          </div>
+
+          <div class="case-box" style="border-left:4px solid var(--accent)">
+            <h4>[논술 과제 발문]</h4>
+            <div>${activeEssay.promptHtml || `<p>${esc(activeEssay.prompt)}</p>`}</div>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin:18px 0 10px">
+            <div class="diag-pill-row" style="margin:0">
+              <button type="button" class="diag-chip ${draft.mode === "scaffold" ? "is-active" : ""}" data-ed-mode="scaffold">단계별 구조화 답안 (추천)</button>
+              <button type="button" class="diag-chip ${draft.mode === "unified" ? "is-active" : ""}" data-ed-mode="unified">통합 서술형 답안지</button>
+            </div>
+            <span id="essay-char-stat" style="font-size:0.82rem;color:var(--text-muted)">현재 ${composed.length}자 (300ms 자동 저장)</span>
+          </div>
+
+          ${
+            draft.mode === "scaffold"
+              ? `
+            <div style="display:grid;gap:12px">
+              <label style="font-size:0.85rem;font-weight:700">1) 사례/문제 진단 (발달·심리역동·위기 수준)
+                <textarea class="essay-textarea" data-scaf-field="diagnosis" placeholder="학생의 핵심 증상/발달/위기 역동과 교사·학교 맥락을 먼저 진단해 보세요.">${esc(
+                  (draft.scaffold && draft.scaffold.diagnosis) || ""
+                )}</textarea>
+              </label>
+              <label style="font-size:0.85rem;font-weight:700">2) 이론적 근거 · 법/윤리 기준 (학자·법조항 인용)
+                <textarea class="essay-textarea" data-scaf-field="theory" placeholder="관련 상담·발달이론(학자/연도) 및 한국 실정법·ASCA 윤리강령을 정확히 연결하세요.">${esc(
+                  (draft.scaffold && draft.scaffold.theory) || ""
+                )}</textarea>
+              </label>
+              <label style="font-size:0.85rem;font-weight:700">3) 학교상담 현장 개입 설계 및 주의점
+                <textarea class="essay-textarea" data-scaf-field="intervention" placeholder="상담실에서 실행할 단계별 절차, 보호자·교원 협력과 윤리적 유의점을 서술하세요.">${esc(
+                  (draft.scaffold && draft.scaffold.intervention) || ""
+                )}</textarea>
+              </label>
+            </div>
+          `
+              : `
+            <label style="font-size:0.85rem;font-weight:700">실전 서술형 답안지
+              <textarea class="essay-textarea is-tall" id="essay-unified-box" placeholder="실전 시험 답안지처럼 서론-본론(이론/법적 근거 및 진단)-결론(구체적 개입) 순으로 자유롭게 작성하세요.">${esc(
+                draft.unifiedText || ""
+              )}</textarea>
+            </label>
+          `
+          }
+
+          <div style="margin-top:16px">
+            <strong style="font-size:0.84rem">핵심 키워드 포함 자동 점검</strong>
+            <div class="kw-strip" id="essay-kw-strip">
+              ${calcEssayKeywordHits(activeEssay, composed)
+                .map((k) => `<span class="kw-pill ${k.hit ? "is-hit" : ""}">${k.hit ? "✓ " : ""}${esc(k.kw)}</span>`)
+                .join("")}
+            </div>
+          </div>
+
+          <details class="deep-drawer" style="margin-top:18px" ${draft.submittedAt ? "open" : ""}>
+            <summary>채점 기준표 자가점검 & 모범답안 1:1 비교 열기</summary>
+            <div class="deep-body">
+              <h4 style="margin-top:0">채점 기준표 자가 체크리스트 (해당 항목을 달성했으면 체크하세요)</h4>
+              <div class="table-scroll">
+                <table class="study-table">
+                  <thead><tr><th style="width:68px">달성</th><th>평가 영역</th><th>배점</th><th>핵심 채점 준거</th></tr></thead>
+                  <tbody>
+                    ${(activeEssay.rubric || [])
+                      .map((r, i) => {
+                        const checked = Boolean((draft.rubricChecks || {})[i]);
+                        return `
+                        <tr>
+                          <td><input type="checkbox" data-rubric-idx="${i}" ${checked ? "checked" : ""} style="width:18px;height:18px;cursor:pointer"></td>
+                          <td><strong>${esc(r.area)}</strong></td>
+                          <td>${esc(r.weight)}</td>
+                          <td>${esc(r.criteria)}${r.deduction ? `<br><small style="color:var(--warn)">${esc(r.deduction)}</small>` : ""}</td>
+                        </tr>`;
+                      })
+                      .join("")}
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="compare-grid">
+                <div class="compare-pane">
+                  <h4 style="margin:0 0 8px;color:var(--accent)">내가 작성한 답안</h4>
+                  <div id="compare-my-answer">${esc(composed) || "(아직 작성된 내용이 없습니다)"}</div>
+                </div>
+                <div class="compare-pane" style="border-color:var(--success)">
+                  <h4 style="margin:0 0 8px;color:var(--success)">교재 모범답안 요지</h4>
+                  <div>${activeEssay.modelAnswerHtml || esc(activeEssay.modelAnswer)}</div>
+                </div>
+              </div>
+            </div>
+          </details>
+        </section>
+      </div>
+    `;
+  }
+
+  function bindEssayShell(root, { activeEssay, draft, getDraft, updateDraft, onPickEssay, onRerender }) {
+    root.querySelectorAll("[data-pick-essay]").forEach((b) =>
+      b.addEventListener("click", () => onPickEssay(b.dataset.pickEssay))
+    );
+    if (!activeEssay) return;
+
+    root.querySelectorAll("[data-ed-mode]").forEach((b) =>
+      b.addEventListener("click", () => {
+        const nextMode = b.dataset.edMode;
+        if (nextMode === "unified" && !draft.unifiedText && draft.mode === "scaffold") {
+          updateDraft(activeEssay.id, { mode: nextMode, unifiedText: getComposedEssayText(draft) });
+        } else {
+          updateDraft(activeEssay.id, { mode: nextMode });
+        }
+        onRerender();
+      })
+    );
+
+    function handleDraftInput(patchFn) {
+      window.clearTimeout(essayDebounceTimer);
+      essayDebounceTimer = window.setTimeout(() => {
+        const updated = updateDraft(activeEssay.id, patchFn());
+        const nextTxt = getComposedEssayText(updated);
+        const charEl = root.querySelector("#essay-char-stat");
+        if (charEl) charEl.textContent = `현재 ${nextTxt.length}자 (자동 저장됨)`;
+        const cmpEl = root.querySelector("#compare-my-answer");
+        if (cmpEl) cmpEl.textContent = nextTxt || "(아직 작성된 내용이 없습니다)";
+        const kwStrip = root.querySelector("#essay-kw-strip");
+        if (kwStrip) {
+          kwStrip.innerHTML = calcEssayKeywordHits(activeEssay, nextTxt)
+            .map((k) => `<span class="kw-pill ${k.hit ? "is-hit" : ""}">${k.hit ? "✓ " : ""}${esc(k.kw)}</span>`)
+            .join("");
+        }
+      }, 300);
+    }
+
+    root.querySelectorAll("[data-scaf-field]").forEach((ta) => {
+      ta.addEventListener("input", () => {
+        const field = ta.dataset.scafField;
+        handleDraftInput(() => {
+          const cur = getDraft(activeEssay.id).scaffold || {};
+          return { scaffold: Object.assign({}, cur, { [field]: ta.value }) };
+        });
+      });
+    });
+
+    const unifiedBox = root.querySelector("#essay-unified-box");
+    if (unifiedBox) {
+      unifiedBox.addEventListener("input", () => {
+        handleDraftInput(() => ({ unifiedText: unifiedBox.value }));
+      });
+    }
+
+    root.querySelectorAll("[data-rubric-idx]").forEach((cb) => {
+      cb.addEventListener("change", () => {
+        const curChecks = Object.assign({}, getDraft(activeEssay.id).rubricChecks || {});
+        curChecks[cb.dataset.rubricIdx] = cb.checked;
+        updateDraft(activeEssay.id, {
+          rubricChecks: curChecks,
+          submittedAt: new Date().toISOString(),
+        });
+      });
+    });
+  }
+
+  /* ---------- Mode 2: Multiple-Choice Quiz Arena (Chapter Scoped) ---------- */
   function renderMcqMode(root, ch) {
     const packs = getAllPacks();
     const pack = getActivePack();
     const mcqState = STORE.getPackMcqState(pack.id);
+    const chRound = STORE.getChapterMcqRound(pack.id, ch.chapter);
     const allMcqs = pack.mcqs || [];
-    const scoped = ui.mcqScope === "all" ? allMcqs : allMcqs.filter((q) => q.chapter === ch.chapter);
+    const scoped = allMcqs.filter((q) => q.chapter === ch.chapter);
+    const chapterIds = scoped.map((q) => q.id);
 
     const filtered = scoped.filter((q) => {
       const ans = mcqState.answers[q.id];
@@ -612,7 +1109,18 @@
 
     const attemptedCount = scoped.filter((q) => mcqState.answers[q.id]).length;
     const correctCount = scoped.filter((q) => mcqState.answers[q.id] && mcqState.answers[q.id].correct).length;
-    const chShortAnswers = (pack.shortAnswers || []).filter((sa) => sa.chapter === ch.chapter || ui.mcqScope === "all");
+    const chShortAnswers = (pack.shortAnswers || []).filter((sa) => sa.chapter === ch.chapter);
+    const nextCh = DATA.chapters.find((c) => c.chapter === ch.chapter + 1);
+
+    const emptyPackHtml = `
+      <div class="sec-article">
+        <p style="margin:0;color:var(--text-muted)">현재 활성 문제팩(<strong>${esc(pack.name)}</strong>)에는 제0${ch.chapter}장 객관식 문항이 없습니다.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+          ${pack.id !== DATA.defaultPack.id ? `<button type="button" class="btn btn-sm" id="mcq-fallback-default">기본 문제팩으로 전환</button>` : ""}
+          <button type="button" class="btn btn-sm btn-primary" id="mcq-fallback-exam">★ 상권 통합 연습에서 전체 문항 풀기 →</button>
+        </div>
+      </div>
+    `;
 
     root.innerHTML = `
       <div class="toolbar-card">
@@ -622,152 +1130,45 @@
               ${packs.map((p) => `<option value="${esc(p.id)}" ${p.id === pack.id ? "selected" : ""}>${esc(p.name)} (${(p.mcqs || []).length}문항)</option>`).join("")}
             </select>
           </label>
-          <div class="diag-pill-row" style="margin:0">
-            <button type="button" class="diag-chip ${ui.mcqScope === "chapter" ? "is-active" : ""}" data-mcq-scope="chapter">제0${ch.chapter}장만 보기</button>
-            <button type="button" class="diag-chip ${ui.mcqScope === "all" ? "is-active" : ""}" data-mcq-scope="all">상권 전체 보기</button>
-          </div>
+          <span class="concept-tag">제0${ch.chapter}장 확인 객관식 (${scoped.length}문항)</span>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
-          <span class="concept-tag" style="background:var(--accent-soft);color:var(--accent)">현재 ${mcqState.round}회차 · ${correctCount}/${attemptedCount} 정답 (총 ${scoped.length}문항)</span>
-          <button type="button" class="btn btn-sm" id="mcq-retry-wrong">오답만 새 회차 풀기</button>
-          <button type="button" class="btn btn-sm btn-primary" id="mcq-retry-all">전체 새 회차 시작</button>
+          <span class="concept-tag" style="background:var(--accent-soft);color:var(--accent)">제0${ch.chapter}장 ${chRound}회차 · ${correctCount}/${attemptedCount} 정답</span>
+          <button type="button" class="btn btn-sm" id="mcq-retry-wrong">제0${ch.chapter}장 오답만 다시 풀기</button>
+          <button type="button" class="btn btn-sm btn-primary" id="mcq-retry-all">제0${ch.chapter}장 새 회차</button>
         </div>
       </div>
 
-      <div class="diag-pill-row">
-        ${[
-          { id: "all", label: `전체 (${scoped.length})` },
-          { id: "unanswered", label: "미풀이" },
-          { id: "wrong", label: "오답만 모아보기" },
-          { id: "bookmarked", label: "★ 오답/북마크" },
-        ]
-          .map(
-            (f) =>
-              `<button type="button" class="diag-chip ${ui.mcqFilter === f.id ? "is-active" : ""}" data-mcq-filter="${f.id}">${f.label}</button>`
-          )
-          .join("")}
-        <button type="button" class="diag-chip" id="mcq-import-cta" style="border-style:dashed;color:var(--accent)">＋ 제미나이 .txt 문제팩 추가</button>
-      </div>
+      ${renderMcqFilterPillsHtml(ui.mcqFilter, scoped.length)}
 
-      ${
-        mcqState.roundHistory && mcqState.roundHistory.length
-          ? `
-        <details class="deep-drawer" style="margin-bottom:18px">
-          <summary>이전 회차 풀이 기록 (${mcqState.roundHistory.length}회 완료)</summary>
-          <div class="deep-body">
-            ${mcqState.roundHistory
-              .slice(0, 8)
-              .map(
-                (h) =>
-                  `<p>• <strong>${h.round}회차</strong> (${new Date(h.completedAt).toLocaleString("ko-KR")}): <strong>${h.score} / ${h.attempted}</strong> 정답 (팩 총 ${h.total}문항, 오답 ${
-                    (h.wrongIds || []).length
-                  }개)</p>`
-              )
-              .join("")}
-          </div>
-        </details>
-      `
-          : ""
-      }
+      ${scoped.length === 0 ? emptyPackHtml : renderMcqCardsHtml(filtered, mcqState.answers, mcqState.bookmarks)}
 
-      ${
-        filtered.length === 0
-          ? `<div class="sec-article"><p style="margin:0;color:var(--text-muted)">선택한 조건(${esc(ui.mcqFilter)})에 해당하는 문항이 없습니다. 위 필터를 변경하거나 새 Gemini 문제팩을 불러와 보세요.</p></div>`
-          : filtered
-              .map((q) => {
-                const rec = mcqState.answers[q.id];
-                const isBm = Boolean(mcqState.bookmarks[q.id]);
-                return `
-                <article class="mcq-card" id="card-${esc(q.id)}">
-                  <div class="mcq-meta">
-                    <div class="mcq-badges">
-                      <span class="matrix-code">제0${q.chapter}장 · 문항 ${q.num}</span>
-                      ${q.sectionRef ? `<span class="concept-tag">${esc(q.sectionRef)}절</span>` : ""}
-                      ${q.difficulty ? `<span class="concept-tag">${esc(q.difficulty)}</span>` : ""}
-                      ${q.keyArea ? `<span class="concept-tag">${esc(q.keyArea)}</span>` : ""}
-                    </div>
-                    <button type="button" class="btn btn-sm" data-bm-q="${esc(q.id)}">${isBm ? "★ 북마크됨" : "☆ 북마크"}</button>
-                  </div>
-                  ${q.contextBox ? `<div class="mcq-context">${q.contextBoxHtml || esc(q.contextBox)}</div>` : ""}
-                  <h3 class="mcq-stem">${q.stemHtml || esc(q.stem)}</h3>
-                  <div class="mcq-options">
-                    ${(q.options || [])
-                      .map((optText, i) => {
-                        const optNo = i + 1;
-                        let cls = "mcq-opt";
-                        if (rec) {
-                          if (optNo === q.answer) cls += " is-correct";
-                          else if (optNo === rec.selected && !rec.correct) cls += " is-wrong";
-                        }
-                        return `<button type="button" class="${cls}" data-pick-q="${esc(q.id)}" data-pick-opt="${optNo}"><span class="opt-num">${
-                          CIRCLES[i] || optNo
-                        }</span><span>${esc(optText)}</span></button>`;
-                      })
-                      .join("")}
-                  </div>
-                  ${
-                    rec
-                      ? `
-                    <div class="mcq-explain">
-                      <p style="margin:0 0 6px;font-weight:800;color:${rec.correct ? "var(--success)" : "var(--danger)"}">
-                        ${rec.correct ? `✓ 정답입니다! (${CIRCLES[q.answer - 1] || q.answer})` : `✕ 오답입니다. 정답은 ${CIRCLES[q.answer - 1] || q.answer} 입니다.`}
-                      </p>
-                      <div>${q.explanationHtml || `<p>${esc(q.explanation)}</p>`}</div>
-                      ${q.sources ? `<p style="margin:8px 0 0;font-size:0.8rem;color:var(--text-muted)">근거: ${esc(q.sources)}</p>` : ""}
-                    </div>
-                  `
-                      : ""
-                  }
-                </article>
-              `;
-              })
-              .join("")
-      }
+      ${renderShortAnswerSectionHtml(
+        chShortAnswers,
+        STORE.getState().shortAnswerChecked,
+        `BONUS · 제0${ch.chapter}장 단답형 자가점검 카드 (${chShortAnswers.length}문항)`,
+        "이론 핵심 구인 인출 연습 (표 5-25)"
+      )}
 
-      ${
-        chShortAnswers.length
-          ? `
-        <section class="sec-article" style="margin-top:24px">
-          <span class="sec-num">BONUS · 제05장 단답형 자가점검 카드 (${chShortAnswers.length}문항)</span>
-          <h2 class="sec-title">이론 핵심 구인 인출 연습 (표 5-25)</h2>
-          <div class="diag-grid-2">
-            ${chShortAnswers
-              .map((sa) => {
-                const checked = Boolean(STORE.getState().shortAnswerChecked[sa.id]);
-                return `
-                <div class="diag-card ${checked ? "is-good" : ""}">
-                  <h4>단답형 ${sa.num}</h4>
-                  <p>${sa.questionHtml || esc(sa.question)}</p>
-                  <details class="deep-drawer" style="margin-top:10px">
-                    <summary>정답 및 해설 확인하기</summary>
-                    <div class="deep-body">
-                      <p><strong>정답:</strong> ${esc(sa.answer)}</p>
-                      <p>${esc(sa.explanation)}</p>
-                      <button type="button" class="btn btn-sm ${checked ? "is-done complete-btn" : ""}" data-toggle-sa="${esc(sa.id)}">${
-                  checked ? "✓ 인출 확인 완료" : "정답 확인 체크"
-                }</button>
-                    </div>
-                  </details>
-                </div>`;
-              })
-              .join("")}
-          </div>
-        </section>
-      `
-          : ""
-      }
+      ${renderFlowGateHtml({
+        badgeText: `제0${ch.chapter}장 객관식 · ${correctCount}/${scoped.length} 풀이`,
+        title: `제0${ch.chapter}장 객관식 확인을 마치셨나요?`,
+        desc: `이제 사례 기반 <strong>실상황 논술형(3단계)</strong>에서 이론과 법령을 직접 적용해 보세요.`,
+        buttonsHtml: `
+          <button type="button" class="btn btn-primary" id="mcq-to-essay">3단계: 제0${ch.chapter}장 실상황 논술 풀기 →</button>
+          ${
+            nextCh
+              ? `<button type="button" class="btn" id="mcq-to-next-ch">다음 제0${nextCh.chapter}장 학습하기 →</button>`
+              : `<button type="button" class="btn" id="mcq-to-exam">★ 상권 통합 연습 바로 가기 →</button>`
+          }
+        `,
+      })}
     `;
 
     root.querySelector("#mcq-pack-sel").addEventListener("change", (e) => {
       STORE.setActivePack(e.target.value);
       renderApp();
     });
-    root.querySelectorAll("[data-mcq-scope]").forEach((b) =>
-      b.addEventListener("click", () => {
-        ui.mcqScope = b.dataset.mcqScope;
-        renderMcqMode(root, ch);
-      })
-    );
     root.querySelectorAll("[data-mcq-filter]").forEach((b) =>
       b.addEventListener("click", () => {
         ui.mcqFilter = b.dataset.mcqFilter;
@@ -776,40 +1177,52 @@
     );
     root.querySelector("#mcq-import-cta").addEventListener("click", () => openGeminiModal());
     root.querySelector("#mcq-retry-wrong").addEventListener("click", () => {
-      STORE.startNewMcqRound(pack.id, allMcqs.length, true);
+      STORE.resetChapterMcq(pack.id, ch.chapter, chapterIds, true);
       ui.mcqFilter = "unanswered";
-      renderApp();
+      renderMcqMode(root, ch);
     });
     root.querySelector("#mcq-retry-all").addEventListener("click", () => {
-      STORE.startNewMcqRound(pack.id, allMcqs.length, false);
+      STORE.resetChapterMcq(pack.id, ch.chapter, chapterIds, false);
       ui.mcqFilter = "all";
-      renderApp();
+      renderMcqMode(root, ch);
     });
 
-    root.querySelectorAll("[data-pick-q]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const qId = btn.dataset.pickQ;
-        const opt = parseInt(btn.dataset.pickOpt, 10);
-        const q = allMcqs.find((x) => x.id === qId);
-        if (!q) return;
+    bindMcqCardActions(root, {
+      allMcqs: scoped,
+      onPick: (qId, opt, q) => {
         STORE.recordMcqAnswer(pack.id, qId, opt, q.answer);
         renderMcqMode(root, ch);
-      });
+      },
+      onBookmark: (qId) => {
+        STORE.toggleBookmark(pack.id, qId);
+        renderMcqMode(root, ch);
+      },
+      onToggleSa: (saId) => {
+        STORE.toggleShortAnswer(saId);
+        renderMcqMode(root, ch);
+      },
     });
 
-    root.querySelectorAll("[data-bm-q]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        STORE.toggleBookmark(pack.id, btn.dataset.bmQ);
-        renderMcqMode(root, ch);
+    const fallbackDef = root.querySelector("#mcq-fallback-default");
+    if (fallbackDef) {
+      fallbackDef.addEventListener("click", () => {
+        STORE.setActivePack(DATA.defaultPack.id);
+        renderApp();
       });
-    });
-
-    root.querySelectorAll("[data-toggle-sa]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        STORE.toggleShortAnswer(btn.dataset.toggleSa);
-        renderMcqMode(root, ch);
-      });
-    });
+    }
+    const fallbackExam = root.querySelector("#mcq-fallback-exam");
+    if (fallbackExam) {
+      fallbackExam.addEventListener("click", () => navigate({ view: "exam", examTab: "mcq" }));
+    }
+    root.querySelector("#mcq-to-essay").addEventListener("click", () => navigate({ view: "chapter", chapter: ch.chapter, mode: "essay" }));
+    const nextChBtn = root.querySelector("#mcq-to-next-ch");
+    if (nextChBtn && nextCh) {
+      nextChBtn.addEventListener("click", () => navigate({ view: "chapter", chapter: nextCh.chapter, mode: "learn" }));
+    }
+    const toExamBtn = root.querySelector("#mcq-to-exam");
+    if (toExamBtn) {
+      toExamBtn.addEventListener("click", () => navigate({ view: "exam", examTab: "mcq" }));
+    }
   }
 
   /* ---------- Mode 3: Real-Case Essay Practice Lab ---------- */
@@ -830,20 +1243,22 @@
     const packs = getAllPacks();
     const pack = getActivePack();
     const allEssays = pack.essays || [];
-    const scoped = ui.essayScope === "all" ? allEssays : allEssays.filter((e) => e.chapter === ch.chapter);
-    let activeEssay = scoped.find((e) => e.id === ui.selectedEssayId) || scoped[0] || allEssays[0];
+    const scoped = allEssays.filter((e) => e.chapter === ch.chapter);
+    let activeEssay = scoped.find((e) => e.id === ui.selectedEssayId) || scoped[0] || null;
     if (activeEssay) ui.selectedEssayId = activeEssay.id;
 
     const draft = activeEssay ? STORE.getEssayDraft(pack.id, activeEssay.id) : null;
-    const composed = getComposedEssayText(draft);
+    const nextCh = DATA.chapters.find((c) => c.chapter === ch.chapter + 1);
 
-    function calcKeywordHits(essay, text) {
-      const lower = (text || "").replace(/\s+/g, "").toLowerCase();
-      return (essay.keywords || []).map((kw) => ({
-        kw,
-        hit: kw.replace(/\s+/g, "").length >= 2 && lower.includes(kw.replace(/\s+/g, "").toLowerCase()),
-      }));
-    }
+    const emptyPackHtml = `
+      <div class="sec-article">
+        <p style="margin:0;color:var(--text-muted)">현재 활성 문제팩(<strong>${esc(pack.name)}</strong>)에는 제0${ch.chapter}장 논술형 문항이 없습니다.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+          ${pack.id !== DATA.defaultPack.id ? `<button type="button" class="btn btn-sm" id="essay-fallback-default">기본 문제팩으로 전환</button>` : ""}
+          <button type="button" class="btn btn-sm btn-primary" id="essay-fallback-exam">★ 상권 통합 연습에서 전체 논술 보기 →</button>
+        </div>
+      </div>
+    `;
 
     root.innerHTML = `
       <div class="toolbar-card">
@@ -853,137 +1268,40 @@
               ${packs.map((p) => `<option value="${esc(p.id)}" ${p.id === pack.id ? "selected" : ""}>${esc(p.name)} (${(p.essays || []).length}문항)</option>`).join("")}
             </select>
           </label>
-          <div class="diag-pill-row" style="margin:0">
-            <button type="button" class="diag-chip ${ui.essayScope === "chapter" ? "is-active" : ""}" data-essay-scope="chapter">제0${ch.chapter}장만 보기</button>
-            <button type="button" class="diag-chip ${ui.essayScope === "all" ? "is-active" : ""}" data-essay-scope="all">상권 전체 (${allEssays.length})</button>
-          </div>
+          <span class="concept-tag">제0${ch.chapter}장 실상황 논술 (${scoped.length}문항)</span>
         </div>
         <button type="button" class="btn btn-sm" id="essay-import-cta">＋ 제미나이 .txt 논술 문항 추가</button>
       </div>
 
+      ${renderEssayShellHtml({
+        scopedEssays: scoped,
+        activeEssay,
+        draft,
+        getDraft: (id) => STORE.getEssayDraft(pack.id, id),
+        emptyHtml: emptyPackHtml,
+      })}
+
       ${
-        !activeEssay
-          ? `<div class="sec-article"><p style="margin:0;color:var(--text-muted)">이 범위에 등록된 논술형 문항이 없습니다.</p></div>`
-          : `
-        <div class="essay-split">
-          <div class="essay-list">
-            ${scoped
-              .map((e) => {
-                const d = STORE.getEssayDraft(pack.id, e.id);
-                const len = getComposedEssayText(d).trim().length;
-                return `
-                <button type="button" class="essay-item-btn ${e.id === activeEssay.id ? "is-active" : ""}" data-pick-essay="${esc(e.id)}">
-                  <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--text-muted)">
-                    <span>제0${e.chapter}장 · 문항 ${e.num}</span>
-                    <span>${len > 0 ? `${len}자 작성` : "미작성"}</span>
-                  </div>
-                  <h4>${esc(e.title)}</h4>
-                </button>
-              `;
-              })
-              .join("")}
-          </div>
-
-          <section class="essay-workspace">
-            <span class="matrix-code">제0${activeEssay.chapter}장 · 실상황 논술형 ${activeEssay.num}</span>
-            <h2 style="margin:8px 0 14px;font-size:1.35rem;letter-spacing:-0.02em">${esc(activeEssay.title)}</h2>
-
-            <div class="case-box">
-              <h4>[실상황 사례 제시문]</h4>
-              <div>${activeEssay.situationHtml || `<p>${esc(activeEssay.situation)}</p>`}</div>
-            </div>
-
-            <div class="case-box" style="border-left:4px solid var(--accent)">
-              <h4>[논술 과제 발문]</h4>
-              <div>${activeEssay.promptHtml || `<p>${esc(activeEssay.prompt)}</p>`}</div>
-            </div>
-
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin:18px 0 10px">
-              <div class="diag-pill-row" style="margin:0">
-                <button type="button" class="diag-chip ${draft.mode === "scaffold" ? "is-active" : ""}" data-ed-mode="scaffold">단계별 구조화 답안 (추천)</button>
-                <button type="button" class="diag-chip ${draft.mode === "unified" ? "is-active" : ""}" data-ed-mode="unified">통합 서술형 답안지</button>
-              </div>
-              <span id="essay-char-stat" style="font-size:0.82rem;color:var(--text-muted)">현재 ${composed.length}자 (300ms 자동 저장)</span>
-            </div>
-
-            ${
-              draft.mode === "scaffold"
-                ? `
-              <div style="display:grid;gap:12px">
-                <label style="font-size:0.85rem;font-weight:700">1) 사례/문제 진단 (발달·심리역동·위기 수준)
-                  <textarea class="essay-textarea" data-scaf-field="diagnosis" placeholder="학생의 핵심 증상/발달/위기 역동과 교사·학교 맥락을 먼저 진단해 보세요.">${esc(
-                    (draft.scaffold && draft.scaffold.diagnosis) || ""
-                  )}</textarea>
-                </label>
-                <label style="font-size:0.85rem;font-weight:700">2) 이론적 근거 · 법/윤리 기준 (학자·법조항 인용)
-                  <textarea class="essay-textarea" data-scaf-field="theory" placeholder="관련 상담·발달이론(학자/연도) 및 한국 실정법·ASCA 윤리강령을 정확히 연결하세요.">${esc(
-                    (draft.scaffold && draft.scaffold.theory) || ""
-                  )}</textarea>
-                </label>
-                <label style="font-size:0.85rem;font-weight:700">3) 학교상담 현장 개입 설계 및 주의점
-                  <textarea class="essay-textarea" data-scaf-field="intervention" placeholder="상담실에서 실행할 단계별 절차, 보호자·교원 협력과 윤리적 유의점을 서술하세요.">${esc(
-                    (draft.scaffold && draft.scaffold.intervention) || ""
-                  )}</textarea>
-                </label>
-              </div>
-            `
-                : `
-              <label style="font-size:0.85rem;font-weight:700">실전 서술형 답안지
-                <textarea class="essay-textarea is-tall" id="essay-unified-box" placeholder="실전 시험 답안지처럼 서론-본론(이론/법적 근거 및 진단)-결론(구체적 개입) 순으로 자유롭게 작성하세요.">${esc(
-                  draft.unifiedText || ""
-                )}</textarea>
-              </label>
-            `
-            }
-
-            <div style="margin-top:16px">
-              <strong style="font-size:0.84rem">핵심 키워드 포함 자동 점검</strong>
-              <div class="kw-strip" id="essay-kw-strip">
-                ${calcKeywordHits(activeEssay, composed)
-                  .map((k) => `<span class="kw-pill ${k.hit ? "is-hit" : ""}">${k.hit ? "✓ " : ""}${esc(k.kw)}</span>`)
-                  .join("")}
-              </div>
-            </div>
-
-            <details class="deep-drawer" style="margin-top:18px" ${draft.submittedAt ? "open" : ""}>
-              <summary>채점 기준표 자가점검 & 모범답안 1:1 비교 열기</summary>
-              <div class="deep-body">
-                <h4 style="margin-top:0">채점 기준표 자가 체크리스트 (해당 항목을 달성했으면 체크하세요)</h4>
-                <div class="table-scroll">
-                  <table class="study-table">
-                    <thead><tr><th style="width:68px">달성</th><th>평가 영역</th><th>배점</th><th>핵심 채점 준거</th></tr></thead>
-                    <tbody>
-                      ${(activeEssay.rubric || [])
-                        .map((r, i) => {
-                          const checked = Boolean((draft.rubricChecks || {})[i]);
-                          return `
-                          <tr>
-                            <td><input type="checkbox" data-rubric-idx="${i}" ${checked ? "checked" : ""} style="width:18px;height:18px;cursor:pointer"></td>
-                            <td><strong>${esc(r.area)}</strong></td>
-                            <td>${esc(r.weight)}</td>
-                            <td>${esc(r.criteria)}${r.deduction ? `<br><small style="color:var(--warn)">${esc(r.deduction)}</small>` : ""}</td>
-                          </tr>`;
-                        })
-                        .join("")}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div class="compare-grid">
-                  <div class="compare-pane">
-                    <h4 style="margin:0 0 8px;color:var(--accent)">내가 작성한 답안</h4>
-                    <div id="compare-my-answer">${esc(composed) || "(아직 작성된 내용이 없습니다)"}</div>
-                  </div>
-                  <div class="compare-pane" style="border-color:var(--success)">
-                    <h4 style="margin:0 0 8px;color:var(--success)">교재 모범답안 요지</h4>
-                    <div>${activeEssay.modelAnswerHtml || esc(activeEssay.modelAnswer)}</div>
-                  </div>
-                </div>
-              </div>
-            </details>
-          </section>
-        </div>
-      `
+        nextCh
+          ? renderFlowGateHtml({
+              badgeText: `제0${ch.chapter}장 학습 사이클 완주`,
+              title: `제0${ch.chapter}장의 요약·객관식·논술형 학습을 마쳤습니다!`,
+              desc: `다음 장으로 넘어가 <strong>제0${nextCh.chapter}장 ${esc(nextCh.title)}</strong> 요약 학습을 시작하거나, 상권 통합 연습을 미리 살펴보세요.`,
+              buttonsHtml: `
+                <button type="button" class="btn btn-primary" id="essay-to-next-ch">다음 제0${nextCh.chapter}장 요약 학습하기 →</button>
+                <button type="button" class="btn" id="essay-to-exam">★ 상권 통합 연습 보기</button>
+              `,
+            })
+          : renderFlowGateHtml({
+              badgeText: "상권 01~06장 전 단원 완주",
+              title: "🎉 상권 마지막 제06장까지 모든 장 학습을 마쳤습니다!",
+              desc: `이제 장별 풀이 기록과 분리된 새 환경에서 <strong>상권 전체 객관식·논술형 통합 실전 연습</strong>을 순서대로 또는 무작위로 풀어보세요.`,
+              buttonsHtml: `
+                <button type="button" class="btn btn-primary" id="essay-to-exam">★ 상권 통합 연습 시작하기 →</button>
+                <button type="button" class="btn" id="essay-to-home">진도표 홈에서 전체 숙달도 보기</button>
+              `,
+              isExamCallout: true,
+            })
       }
     `;
 
@@ -992,81 +1310,456 @@
       ui.selectedEssayId = null;
       renderApp();
     });
-    root.querySelectorAll("[data-essay-scope]").forEach((b) =>
-      b.addEventListener("click", () => {
-        ui.essayScope = b.dataset.essayScope;
-        ui.selectedEssayId = null;
-        renderEssayMode(root, ch);
-      })
-    );
     root.querySelector("#essay-import-cta").addEventListener("click", () => openGeminiModal());
 
-    root.querySelectorAll("[data-pick-essay]").forEach((b) =>
-      b.addEventListener("click", () => {
-        ui.selectedEssayId = b.dataset.pickEssay;
-        renderEssayMode(root, ch);
-      })
-    );
-
-    if (!activeEssay) return;
-
-    root.querySelectorAll("[data-ed-mode]").forEach((b) =>
-      b.addEventListener("click", () => {
-        const nextMode = b.dataset.edMode;
-        if (nextMode === "unified" && !draft.unifiedText && draft.mode === "scaffold") {
-          STORE.updateEssayDraft(pack.id, activeEssay.id, { mode: nextMode, unifiedText: getComposedEssayText(draft) });
-        } else {
-          STORE.updateEssayDraft(pack.id, activeEssay.id, { mode: nextMode });
-        }
-        renderEssayMode(root, ch);
-      })
-    );
-
-    function handleDraftInput(patchFn) {
-      window.clearTimeout(essayDebounceTimer);
-      essayDebounceTimer = window.setTimeout(() => {
-        const updated = STORE.updateEssayDraft(pack.id, activeEssay.id, patchFn());
-        const nextTxt = getComposedEssayText(updated);
-        const charEl = root.querySelector("#essay-char-stat");
-        if (charEl) charEl.textContent = `현재 ${nextTxt.length}자 (자동 저장됨)`;
-        const cmpEl = root.querySelector("#compare-my-answer");
-        if (cmpEl) cmpEl.textContent = nextTxt || "(아직 작성된 내용이 없습니다)";
-        const kwStrip = root.querySelector("#essay-kw-strip");
-        if (kwStrip) {
-          kwStrip.innerHTML = calcKeywordHits(activeEssay, nextTxt)
-            .map((k) => `<span class="kw-pill ${k.hit ? "is-hit" : ""}">${k.hit ? "✓ " : ""}${esc(k.kw)}</span>`)
-            .join("");
-        }
-      }, 300);
-    }
-
-    root.querySelectorAll("[data-scaf-field]").forEach((ta) => {
-      ta.addEventListener("input", () => {
-        const field = ta.dataset.scafField;
-        handleDraftInput(() => {
-          const cur = STORE.getEssayDraft(pack.id, activeEssay.id).scaffold || {};
-          return { scaffold: Object.assign({}, cur, { [field]: ta.value }) };
-        });
-      });
-    });
-
-    const unifiedBox = root.querySelector("#essay-unified-box");
-    if (unifiedBox) {
-      unifiedBox.addEventListener("input", () => {
-        handleDraftInput(() => ({ unifiedText: unifiedBox.value }));
+    const fallbackDef = root.querySelector("#essay-fallback-default");
+    if (fallbackDef) {
+      fallbackDef.addEventListener("click", () => {
+        STORE.setActivePack(DATA.defaultPack.id);
+        ui.selectedEssayId = null;
+        renderApp();
       });
     }
+    const fallbackExam = root.querySelector("#essay-fallback-exam");
+    if (fallbackExam) {
+      fallbackExam.addEventListener("click", () => navigate({ view: "exam", examTab: "essay" }));
+    }
+    const nextChBtn = root.querySelector("#essay-to-next-ch");
+    if (nextChBtn && nextCh) {
+      nextChBtn.addEventListener("click", () => navigate({ view: "chapter", chapter: nextCh.chapter, mode: "learn" }));
+    }
+    const toExamBtn = root.querySelector("#essay-to-exam");
+    if (toExamBtn) {
+      toExamBtn.addEventListener("click", () => navigate({ view: "exam", examTab: "mcq" }));
+    }
+    const toHomeBtn = root.querySelector("#essay-to-home");
+    if (toHomeBtn) {
+      toHomeBtn.addEventListener("click", () => navigate({ view: "dashboard" }));
+    }
 
-    root.querySelectorAll("[data-rubric-idx]").forEach((cb) => {
-      cb.addEventListener("change", () => {
-        const curChecks = Object.assign({}, STORE.getEssayDraft(pack.id, activeEssay.id).rubricChecks || {});
-        curChecks[cb.dataset.rubricIdx] = cb.checked;
-        STORE.updateEssayDraft(pack.id, activeEssay.id, {
-          rubricChecks: curChecks,
-          submittedAt: new Date().toISOString(),
-        });
-      });
+    bindEssayShell(root, {
+      activeEssay,
+      draft,
+      getDraft: (id) => STORE.getEssayDraft(pack.id, id),
+      updateDraft: (id, patch) => STORE.updateEssayDraft(pack.id, id, patch),
+      onPickEssay: (id) => {
+        ui.selectedEssayId = id;
+        renderEssayMode(root, ch);
+      },
+      onRerender: () => renderEssayMode(root, ch),
     });
+  }
+
+  /* ---------- Track 2: Full-Volume Integrated Practice Studio ---------- */
+  function bindCommonExamHeader(root) {
+    const sel = root.querySelector("#exam-pack-sel");
+    if (sel) {
+      sel.addEventListener("change", (e) => {
+        STORE.setActivePack(e.target.value);
+        ui.selectedExamEssayId = null;
+        renderApp();
+      });
+    }
+    const importBtn = root.querySelector("#exam-import-cta");
+    if (importBtn) importBtn.addEventListener("click", () => openGeminiModal());
+    const homeBtn = root.querySelector("#exam-to-home");
+    if (homeBtn) homeBtn.addEventListener("click", () => navigate({ view: "dashboard" }));
+  }
+
+  function renderVolumeExam(root) {
+    const packs = getAllPacks();
+    const pack = getActivePack();
+    const examState = STORE.getVolumeExamState(pack.id);
+    const mcqState = STORE.getPackMcqState(pack.id);
+    const allMcqs = pack.mcqs || [];
+    const allMcqIds = allMcqs.map((q) => q.id);
+    const allEssays = pack.essays || [];
+
+    const packHeaderHtml = `
+      <div class="toolbar-card">
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+          <label style="font-size:0.84rem;font-weight:700">통합 연습 문제팩:
+            <select id="exam-pack-sel" class="btn btn-sm" style="margin-left:6px">
+              ${packs
+                .map(
+                  (p) =>
+                    `<option value="${esc(p.id)}" ${p.id === pack.id ? "selected" : ""}>${esc(p.name)} (객관식 ${(p.mcqs || []).length} · 논술 ${(p.essays || []).length})</option>`
+                )
+                .join("")}
+            </select>
+          </label>
+          <span class="concept-tag" style="background:var(--accent-soft);color:var(--accent)">장별 학습 진도와 독립 저장 · 백지/랜덤 반복 가능</span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn btn-sm" id="exam-import-cta">＋ 제미나이 .txt 문제팩 추가</button>
+          <button type="button" class="btn btn-sm" id="exam-to-home">진도표 홈</button>
+        </div>
+      </div>
+    `;
+
+    if (ui.examTab === "essay") {
+      const scopedEssays =
+        ui.examEssayChapter === 0 ? allEssays : allEssays.filter((e) => e.chapter === ui.examEssayChapter);
+      let activeEssay = scopedEssays.find((e) => e.id === ui.selectedExamEssayId) || scopedEssays[0] || null;
+      if (activeEssay) ui.selectedExamEssayId = activeEssay.id;
+      const draft = activeEssay ? STORE.getVolumeExamEssayDraft(pack.id, activeEssay.id) : null;
+
+      root.innerHTML = `
+        ${packHeaderHtml}
+        <div class="toolbar-card">
+          <div class="diag-pill-row" style="margin:0">
+            <button type="button" class="diag-chip ${ui.examEssayChapter === 0 ? "is-active" : ""}" data-exam-essay-ch="0">전체 (${allEssays.length})</button>
+            ${DATA.chapters
+              .map((c) => {
+                const cnt = allEssays.filter((e) => e.chapter === c.chapter).length;
+                return `<button type="button" class="diag-chip ${ui.examEssayChapter === c.chapter ? "is-active" : ""}" data-exam-essay-ch="${c.chapter}">${c.chapter}장 (${cnt})</button>`;
+              })
+              .join("")}
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button type="button" class="btn btn-sm btn-primary" id="exam-random-essay-btn" ${
+              scopedEssays.length === 0 ? "disabled" : ""
+            }>🎲 무작위 사례 뽑기</button>
+          </div>
+        </div>
+
+        ${renderEssayShellHtml({
+          scopedEssays,
+          activeEssay,
+          draft,
+          getDraft: (id) => STORE.getVolumeExamEssayDraft(pack.id, id),
+          emptyHtml: `<div class="sec-article"><p style="margin:0;color:var(--text-muted)">선택한 조건에 해당하는 통합 논술 문항이 없습니다. 전체 필터를 선택하거나 새 Gemini 문제팩을 추가해 보세요.</p></div>`,
+        })}
+
+        ${renderFlowGateHtml({
+          badgeText: `통합 실전 논술 · ${scopedEssays.length}문항 범위`,
+          title: "통합 논술 점검 후 단원별 성취 리포트를 확인해 보세요",
+          desc: "장별 확인 풀이와 상권 통합 연습 정답률을 단원별로 나란히 비교해 취약한 장을 바로 찾아 복습할 수 있습니다.",
+          buttonsHtml: `
+            <button type="button" class="btn btn-primary" id="exam-goto-report">3. 단원별 성취 리포트 보기 →</button>
+            <button type="button" class="btn" id="exam-goto-mcq">1. 통합 객관식 실전으로</button>
+          `,
+        })}
+      `;
+
+      bindCommonExamHeader(root);
+      root.querySelectorAll("[data-exam-essay-ch]").forEach((b) =>
+        b.addEventListener("click", () => {
+          ui.examEssayChapter = parseInt(b.dataset.examEssayCh, 10) || 0;
+          ui.selectedExamEssayId = null;
+          renderVolumeExam(root);
+        })
+      );
+      const randBtn = root.querySelector("#exam-random-essay-btn");
+      if (randBtn && scopedEssays.length > 0) {
+        randBtn.addEventListener("click", () => {
+          const pool =
+            scopedEssays.length > 1 && activeEssay
+              ? scopedEssays.filter((e) => e.id !== activeEssay.id)
+              : scopedEssays;
+          const pick = pool[Math.floor(Math.random() * pool.length)];
+          if (pick) {
+            ui.selectedExamEssayId = pick.id;
+            renderVolumeExam(root);
+          }
+        });
+      }
+      root.querySelector("#exam-goto-report").addEventListener("click", () => navigate({ view: "exam", examTab: "report" }));
+      root.querySelector("#exam-goto-mcq").addEventListener("click", () => navigate({ view: "exam", examTab: "mcq" }));
+
+      bindEssayShell(root, {
+        activeEssay,
+        draft,
+        getDraft: (id) => STORE.getVolumeExamEssayDraft(pack.id, id),
+        updateDraft: (id, patch) => STORE.updateVolumeExamEssayDraft(pack.id, id, patch),
+        onPickEssay: (id) => {
+          ui.selectedExamEssayId = id;
+          renderVolumeExam(root);
+        },
+        onRerender: () => renderVolumeExam(root),
+      });
+      return;
+    }
+
+    if (ui.examTab === "report") {
+      const m = computeMetrics();
+      root.innerHTML = `
+        ${packHeaderHtml}
+        <section class="kpi-bento" style="margin-top:0" aria-label="장별 대 통합 성취 비교">
+          <div class="kpi-card">
+            ${renderProgressRingHtml(m.readPct, "요약 완독률", "#0071e3")}
+            <div class="kpi-text">
+              <h4>전 범위 요약 완독</h4>
+              <div class="kpi-val">${m.readCount} / ${m.totalSections}절</div>
+              <div class="kpi-sub">각 절 하단 완료 체크 누적</div>
+            </div>
+          </div>
+          <div class="kpi-card">
+            ${renderProgressRingHtml(m.mcqAccuracy, "장별 객관식 정답률", "#5e5ce6")}
+            <div class="kpi-text">
+              <h4>장 마무리 객관식 누적</h4>
+              <div class="kpi-val">${m.mcqCorrect} / ${m.mcqAttempted} <small style="color:var(--text-muted)">(${m.mcqAccuracy}%)</small></div>
+              <div class="kpi-sub">단원 학습 직후 확인 풀이</div>
+            </div>
+          </div>
+          <div class="kpi-card">
+            ${renderProgressRingHtml(m.examAccuracy, "통합 실전 정답률", "#bf5a00")}
+            <div class="kpi-text">
+              <h4>상권 통합 객관식 (${m.examRound}회차)</h4>
+              <div class="kpi-val">${m.examCorrect} / ${m.examAttempted} <small style="color:var(--text-muted)">(${m.examAccuracy}%)</small></div>
+              <div class="kpi-sub">전 범위 백지·무작위 실전</div>
+            </div>
+          </div>
+          <div class="kpi-card">
+            ${renderProgressRingHtml(m.essayTotal ? Math.round((m.examEssayDone / m.essayTotal) * 100) : 0, "통합 논술 작성률", "#008060")}
+            <div class="kpi-text">
+              <h4>통합 실상황 논술</h4>
+              <div class="kpi-val">${m.examEssayDone} / ${m.essayTotal}문항</div>
+              <div class="kpi-sub">장별 논술 완료: ${m.essayDone}/${m.essayTotal}문항</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="sec-article">
+          <span class="sec-num">CHAPTER-BY-CHAPTER COMPARISON</span>
+          <h2 class="sec-title">단원별 장 학습 vs 상권 통합 실전 성취 리포트</h2>
+          <p class="sec-summary">단원을 마친 직후에 풀었던 <strong>장별 확인 성적</strong>과 시간이 지난 뒤 전 범위를 섞어 다시 푼 <strong>통합 실전 성적</strong>을 비교해 취약 단원을 바로 복습하세요.</p>
+          <div class="table-scroll">
+            <table class="study-table">
+              <thead>
+                <tr>
+                  <th>단원</th>
+                  <th>요약 완독</th>
+                  <th>장 마무리 객관식</th>
+                  <th>상권 통합 객관식</th>
+                  <th>통합 실상황 논술</th>
+                  <th>취약 단원 바로 복습</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${m.byChapter
+                  .map((c) => {
+                    const chAcc = c.mcqAttempted ? Math.round((c.mcqCorrect / c.mcqAttempted) * 100) : 0;
+                    const examWeak = c.examAttempted > 0 && c.examAccuracy < 70;
+                    return `
+                    <tr>
+                      <td><strong>${esc(c.code)}</strong><br><small style="color:var(--text-muted)">${esc(c.title)}</small></td>
+                      <td><strong>${c.readDone}/${c.readTotal}절</strong> (${c.readPct}%)</td>
+                      <td>${c.mcqCorrect}/${c.mcqAttempted} <small style="color:var(--text-muted)">(총 ${c.mcqTotal}, ${chAcc}%)</small></td>
+                      <td style="font-weight:700;color:${examWeak ? "var(--danger)" : "inherit"}">${c.examCorrect}/${c.examAttempted} <small>(총 ${c.mcqTotal}, ${c.examAccuracy}%)</small></td>
+                      <td>${c.examEssayDone}/${c.essayTotal}문항</td>
+                      <td>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap">
+                          <button type="button" class="btn btn-sm" data-rep-ch="${c.chapter}" data-rep-mode="learn">요약</button>
+                          <button type="button" class="btn btn-sm" data-rep-ch="${c.chapter}" data-rep-mode="mcq">장 객관식</button>
+                        </div>
+                      </td>
+                    </tr>`;
+                  })
+                  .join("")}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        ${
+          examState.roundHistory && examState.roundHistory.length
+            ? `
+          <section class="sec-article">
+            <span class="sec-num">EXAM HISTORY</span>
+            <h2 class="sec-title">상권 통합 객관식 회차 누적 기록 (${examState.roundHistory.length}회)</h2>
+            <div class="table-scroll">
+              <table class="study-table">
+                <thead><tr><th>회차</th><th>기록 일시</th><th>점수</th><th>오답 문항 수</th></tr></thead>
+                <tbody>
+                  ${examState.roundHistory
+                    .slice(0, 10)
+                    .map(
+                      (h) => `
+                    <tr>
+                      <td><strong>${h.round}회차</strong></td>
+                      <td>${new Date(h.completedAt).toLocaleString("ko-KR")}</td>
+                      <td><strong>${h.score} / ${h.attempted}</strong> (총 ${h.total}문항)</td>
+                      <td>${(h.wrongIds || []).length}개</td>
+                    </tr>`
+                    )
+                    .join("")}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        `
+            : ""
+        }
+
+        ${renderFlowGateHtml({
+          badgeText: "2-TRACK REVIEW LOOP",
+          title: "틀렸던 통합 문항만 골라 다시 점검해 볼까요?",
+          desc: "통합 객관식 실전으로 돌아가 오답만 모아 새 회차를 시작하거나 전 범위 무작위 출제에 재도전할 수 있습니다.",
+          buttonsHtml: `
+            <button type="button" class="btn btn-primary" id="report-to-mcq">1. 통합 객관식 실전 →</button>
+            <button type="button" class="btn" id="report-to-essay">2. 통합 실상황 논술 →</button>
+          `,
+          isExamCallout: true,
+        })}
+      `;
+
+      bindCommonExamHeader(root);
+      root.querySelectorAll("[data-rep-ch]").forEach((b) =>
+        b.addEventListener("click", () =>
+          navigate({ view: "chapter", chapter: parseInt(b.dataset.repCh, 10), mode: b.dataset.repMode || "learn" })
+        )
+      );
+      root.querySelector("#report-to-mcq").addEventListener("click", () => navigate({ view: "exam", examTab: "mcq" }));
+      root.querySelector("#report-to-essay").addEventListener("click", () => navigate({ view: "exam", examTab: "essay" }));
+      return;
+    }
+
+    // Default tab: examTab === "mcq"
+    let orderedMcqs = allMcqs;
+    if (examState.orderMode === "shuffle" && Array.isArray(examState.shuffledIds) && examState.shuffledIds.length) {
+      const byId = new Map(allMcqs.map((q) => [q.id, q]));
+      const seen = new Set();
+      orderedMcqs = [];
+      examState.shuffledIds.forEach((id) => {
+        const item = byId.get(id);
+        if (item && !seen.has(id)) {
+          orderedMcqs.push(item);
+          seen.add(id);
+        }
+      });
+      allMcqs.forEach((item) => {
+        if (!seen.has(item.id)) orderedMcqs.push(item);
+      });
+    }
+
+    const filtered = orderedMcqs.filter((q) => {
+      const ans = examState.answers[q.id];
+      if (ui.examMcqFilter === "unanswered") return !ans;
+      if (ui.examMcqFilter === "wrong") return ans && !ans.correct;
+      if (ui.examMcqFilter === "bookmarked") return Boolean(mcqState.bookmarks[q.id]);
+      return true;
+    });
+
+    const attemptedCount = allMcqs.filter((q) => examState.answers[q.id]).length;
+    const correctCount = allMcqs.filter((q) => examState.answers[q.id] && examState.answers[q.id].correct).length;
+
+    root.innerHTML = `
+      ${packHeaderHtml}
+      <div class="toolbar-card">
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+          <span style="font-size:0.84rem;font-weight:700">출제 순서:</span>
+          <div class="diag-pill-row" style="margin:0">
+            <button type="button" class="diag-chip ${examState.orderMode !== "shuffle" ? "is-active" : ""}" data-exam-order="sequential">단원 순차 출제</button>
+            <button type="button" class="diag-chip ${examState.orderMode === "shuffle" ? "is-active" : ""}" data-exam-order="shuffle">전 범위 무작위 섞기</button>
+          </div>
+          ${
+            examState.orderMode === "shuffle"
+              ? `<button type="button" class="btn btn-sm" id="exam-reshuffle-btn">🎲 순서 다시 섞기</button>`
+              : ""
+          }
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+          <span class="concept-tag" style="background:var(--accent-soft);color:var(--accent)">통합 실전 ${examState.round}회차 · ${correctCount}/${attemptedCount} 정답 (총 ${allMcqs.length}문항)</span>
+          <button type="button" class="btn btn-sm" id="exam-retry-wrong">통합 오답만 새 회차</button>
+          <button type="button" class="btn btn-sm btn-primary" id="exam-retry-all">통합 전 범위 새 회차</button>
+        </div>
+      </div>
+
+      ${renderMcqFilterPillsHtml(ui.examMcqFilter, allMcqs.length)}
+
+      ${
+        examState.roundHistory && examState.roundHistory.length
+          ? `
+        <details class="deep-drawer" style="margin-bottom:18px">
+          <summary>이전 통합 실전 회차 기록 (${examState.roundHistory.length}회 완료)</summary>
+          <div class="deep-body">
+            ${examState.roundHistory
+              .slice(0, 8)
+              .map(
+                (h) =>
+                  `<p>• <strong>${h.round}회차</strong> (${new Date(h.completedAt).toLocaleString("ko-KR")}): <strong>${h.score} / ${h.attempted}</strong> 정답 (팩 총 ${h.total}문항, 오답 ${
+                    (h.wrongIds || []).length
+                  }개)</p>`
+              )
+              .join("")}
+          </div>
+        </details>
+      `
+          : ""
+      }
+
+      ${renderMcqCardsHtml(filtered, examState.answers, mcqState.bookmarks)}
+
+      ${renderShortAnswerSectionHtml(
+        pack.shortAnswers || [],
+        examState.shortAnswerChecked || {},
+        `BONUS · 상권 통합 단답형 인출 카드 (${(pack.shortAnswers || []).length}문항)`,
+        "이론 핵심 구인 통합 인출 연습 (장별 기록과 독립 체크)"
+      )}
+
+      ${renderFlowGateHtml({
+        badgeText: `통합 실전 ${examState.round}회차 · ${correctCount}/${attemptedCount} 정답`,
+        title: "통합 객관식 점검을 마치셨나요?",
+        desc: "<strong>2. 통합 실상황 논술</strong>에서 전 단원 사례를 직접 작성해 보거나, <strong>3. 단원별 성취 리포트</strong>로 취약 단원을 진단하세요.",
+        buttonsHtml: `
+          <button type="button" class="btn btn-primary" id="exam-to-essay-tab">2. 통합 실상황 논술 →</button>
+          <button type="button" class="btn" id="exam-to-report-tab">3. 단원별 성취 리포트 →</button>
+        `,
+        isExamCallout: true,
+      })}
+    `;
+
+    bindCommonExamHeader(root);
+    root.querySelectorAll("[data-exam-order]").forEach((b) =>
+      b.addEventListener("click", () => {
+        STORE.setVolumeExamOrder(pack.id, b.dataset.examOrder, allMcqIds, false);
+        renderVolumeExam(root);
+      })
+    );
+    const reshuffleBtn = root.querySelector("#exam-reshuffle-btn");
+    if (reshuffleBtn) {
+      reshuffleBtn.addEventListener("click", () => {
+        STORE.setVolumeExamOrder(pack.id, "shuffle", allMcqIds, true);
+        renderVolumeExam(root);
+      });
+    }
+    root.querySelectorAll("[data-mcq-filter]").forEach((b) =>
+      b.addEventListener("click", () => {
+        ui.examMcqFilter = b.dataset.mcqFilter;
+        renderVolumeExam(root);
+      })
+    );
+    root.querySelector("#mcq-import-cta").addEventListener("click", () => openGeminiModal());
+    root.querySelector("#exam-retry-wrong").addEventListener("click", () => {
+      STORE.startNewVolumeExamRound(pack.id, allMcqIds, true);
+      ui.examMcqFilter = "unanswered";
+      renderVolumeExam(root);
+    });
+    root.querySelector("#exam-retry-all").addEventListener("click", () => {
+      STORE.startNewVolumeExamRound(pack.id, allMcqIds, false);
+      ui.examMcqFilter = "all";
+      renderVolumeExam(root);
+    });
+
+    bindMcqCardActions(root, {
+      allMcqs,
+      onPick: (qId, opt, q) => {
+        STORE.recordVolumeExamMcq(pack.id, qId, opt, q.answer);
+        renderVolumeExam(root);
+      },
+      onBookmark: (qId) => {
+        STORE.toggleBookmark(pack.id, qId);
+        renderVolumeExam(root);
+      },
+      onToggleSa: (saId) => {
+        STORE.toggleVolumeShortAnswer(saId);
+        renderVolumeExam(root);
+      },
+    });
+
+    root.querySelector("#exam-to-essay-tab").addEventListener("click", () => navigate({ view: "exam", examTab: "essay" }));
+    root.querySelector("#exam-to-report-tab").addEventListener("click", () => navigate({ view: "exam", examTab: "report" }));
   }
 
   /* ---------- <dialog> Modals: Gemini .txt Studio & Progress/Backup ---------- */
@@ -1411,12 +2104,14 @@
     renderHeader();
     renderSubbar();
     const root = document.getElementById("app-root");
+    if (ui.view !== "chapter" && scrollspyObserver) {
+      scrollspyObserver.disconnect();
+      scrollspyObserver = null;
+    }
     if (ui.view === "dashboard") {
-      if (scrollspyObserver) {
-        scrollspyObserver.disconnect();
-        scrollspyObserver = null;
-      }
       renderDashboard(root);
+    } else if (ui.view === "exam") {
+      renderVolumeExam(root);
     } else {
       const ch = DATA.chapters.find((c) => c.chapter === ui.chapter) || DATA.chapters[0];
       if (ui.mode === "learn") renderLearnMode(root, ch);
@@ -1442,9 +2137,10 @@
     }
 
     const savedPos = STORE.getState().lastPosition;
-    if (savedPos && savedPos.chapter) {
-      ui.chapter = savedPos.chapter;
-      ui.mode = savedPos.mode || "learn";
+    if (savedPos) {
+      if (savedPos.chapter) ui.chapter = savedPos.chapter;
+      if (savedPos.mode) ui.mode = savedPos.mode;
+      if (savedPos.examTab) ui.examTab = savedPos.examTab;
     }
 
     document.getElementById("brand-home-btn").addEventListener("click", () => navigate({ view: "dashboard" }));
