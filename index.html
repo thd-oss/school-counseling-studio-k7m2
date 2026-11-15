@@ -3,7 +3,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
   <title>학교상담과 생활지도 (상권) · 인터랙티브 학습 스튜디오</title>
   <style>
@@ -45,10 +45,19 @@
   --radius-md: 18px;
   --radius-lg: 24px;
   --radius-pill: 999px;
-  --header-h: 58px;
-  --subnav-h: 54px;
+  --header-min-h: 3.625rem;
+  --header-h: 3.625rem;
+  --subnav-min-h: 3.125rem;
+  --subnav-h: 0px;
+  --target-min: 24px;
   --font-sans: "Pretendard Variable", "Pretendard", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
   color-scheme: light;
+}
+
+@media (pointer: coarse) {
+  :root {
+    --target-min: 38px;
+  }
 }
 
 [data-theme="dark"] {
@@ -99,8 +108,22 @@ body {
   color: var(--text);
   line-height: 1.65;
   word-break: keep-all;
+  overflow-wrap: anywhere;
   -webkit-font-smoothing: antialiased;
   font-variant-numeric: tabular-nums;
+}
+
+h1, h2, h3, h4 {
+  text-wrap: balance;
+}
+
+p, li {
+  text-wrap: pretty;
+}
+
+img, video {
+  max-inline-size: 100%;
+  block-size: auto;
 }
 
 a {
@@ -114,6 +137,12 @@ a:hover {
 button, input, textarea, select {
   font-family: inherit;
   color: inherit;
+}
+
+select.btn {
+  max-inline-size: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ---------- Modern Web Guidance: Scroll Progress Indicator ---------- */
@@ -149,7 +178,8 @@ button, input, textarea, select {
   position: sticky;
   top: 0;
   z-index: 120;
-  height: var(--header-h);
+  min-block-size: var(--header-min-h);
+  padding-block-start: env(safe-area-inset-top, 0px);
   background: var(--surface-elevated);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
@@ -157,48 +187,74 @@ button, input, textarea, select {
 }
 
 .header-inner {
-  max-width: 1360px;
-  margin: 0 auto;
-  height: 100%;
-  padding: 0 20px;
-  display: flex;
+  max-inline-size: 85rem;
+  margin-inline: auto;
+  padding-block: 0.45rem 0.4rem;
+  padding-inline: max(0.875rem, env(safe-area-inset-left, 0px)) max(0.875rem, env(safe-area-inset-right, 0px));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "brand actions"
+    "nav   nav";
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  row-gap: 0.375rem;
+  column-gap: 0.5rem;
 }
 
 .brand-btn {
+  grid-area: brand;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  justify-self: start;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 0.55rem;
   background: none;
   border: none;
-  padding: 6px 10px;
+  padding: 0.35rem 0.5rem;
+  min-block-size: var(--target-min);
   border-radius: var(--radius-pill);
   cursor: pointer;
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   letter-spacing: -0.02em;
-  white-space: nowrap;
+  white-space: normal;
+  text-align: left;
+  line-height: 1.25;
 }
 .brand-btn:hover {
   background: var(--surface-subtle);
 }
 .brand-dot {
+  flex-shrink: 0;
   width: 10px;
   height: 10px;
   border-radius: 50%;
   background: var(--accent);
   box-shadow: 0 0 0 4px var(--accent-soft);
 }
+.brand-title {
+  min-inline-size: 0;
+  font-size: 0.92rem;
+}
+.brand-sub {
+  font-weight: 500;
+  color: var(--text-muted);
+}
 
 .chapter-nav {
+  grid-area: nav;
+  min-inline-size: 0;
+  inline-size: 100%;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 0.25rem;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  padding: 4px 2px;
+  padding-block: 0.35rem 0.1rem;
+  border-block-start: 1px solid var(--border);
 }
 .chapter-nav::-webkit-scrollbar {
   display: none;
@@ -208,9 +264,10 @@ button, input, textarea, select {
   border: 1px solid transparent;
   background: transparent;
   color: var(--text-muted);
-  font-size: 0.83rem;
+  font-size: 0.82rem;
   font-weight: 600;
-  padding: 6px 12px;
+  padding: 0.35rem 0.72rem;
+  min-block-size: var(--target-min);
   border-radius: var(--radius-pill);
   cursor: pointer;
   white-space: nowrap;
@@ -220,22 +277,26 @@ button, input, textarea, select {
   color: var(--text);
   background: var(--surface-subtle);
 }
-.chap-pill.is-active {
+.chap-pill:is([aria-current="page"], .is-active) {
   color: var(--text);
+  font-weight: 700;
   background: var(--surface);
   border-color: var(--border-strong);
   box-shadow: var(--shadow-sm);
 }
 
 .header-actions {
+  grid-area: actions;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
+  gap: 0.375rem;
+  min-inline-size: 0;
 }
 
 .save-badge {
-  display: inline-flex;
+  display: none;
   align-items: center;
   gap: 6px;
   font-size: 0.76rem;
@@ -247,11 +308,45 @@ button, input, textarea, select {
   white-space: nowrap;
 }
 
+@media (min-width: 80rem) {
+  .save-badge {
+    display: inline-flex;
+  }
+}
+
+@media (max-width: 30rem) {
+  .brand-sub {
+    display: none;
+  }
+}
+
+@media (max-width: 47.99rem) {
+  .theme-btn-label {
+    display: none;
+  }
+}
+
+@media (min-width: 68rem) {
+  .header-inner {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "brand nav actions";
+    padding-block: 0.45rem;
+    padding-inline: max(1.25rem, env(safe-area-inset-left, 0px)) max(1.25rem, env(safe-area-inset-right, 0px));
+    column-gap: 0.75rem;
+  }
+  .chapter-nav {
+    border-block-start: 0;
+    padding-block: 0.2rem;
+    justify-content: center;
+  }
+}
+
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
+  min-block-size: var(--target-min);
   border-radius: var(--radius-pill);
   border: 1px solid var(--border);
   background: var(--surface);
@@ -283,6 +378,7 @@ button, input, textarea, select {
   background: var(--surface-subtle);
 }
 .btn-sm {
+  min-block-size: var(--target-min);
   padding: 5px 11px;
   font-size: 0.78rem;
 }
@@ -301,7 +397,7 @@ button, input, textarea, select {
 /* ---------- Modern Web Guidance: Chapter Mode Subheader Tabs ---------- */
 .chapter-subbar {
   position: sticky;
-  top: var(--header-h);
+  inset-block-start: var(--header-h);
   z-index: 100;
   background: var(--surface-elevated);
   backdrop-filter: saturate(180%) blur(18px);
@@ -310,10 +406,10 @@ button, input, textarea, select {
 }
 
 .subbar-inner {
-  max-width: 1360px;
-  margin: 0 auto;
-  padding: 0 20px;
-  min-height: var(--subnav-h);
+  max-inline-size: 85rem;
+  margin-inline: auto;
+  padding-inline: max(0.875rem, env(safe-area-inset-left, 0px)) max(0.875rem, env(safe-area-inset-right, 0px));
+  min-block-size: var(--subnav-min-h);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -440,9 +536,26 @@ button, input, textarea, select {
 
 /* ---------- Main Container & Apple Hero / Bento Grids ---------- */
 .main-shell {
-  max-width: 1360px;
-  margin: 0 auto;
-  padding: 28px 20px 96px;
+  max-inline-size: 85rem;
+  margin-inline: auto;
+  padding-block: 1.5rem calc(5.5rem + env(safe-area-inset-bottom, 0px));
+  padding-inline: max(0.95rem, env(safe-area-inset-left, 0px)) max(0.95rem, env(safe-area-inset-right, 0px));
+}
+
+.apple-hero > *,
+.kpi-card,
+.kpi-text,
+.matrix-card,
+.learn-layout > *,
+.essay-split > *,
+.essay-workspace,
+.compare-grid > *,
+.bento-card,
+.diag-card,
+.mcq-card,
+.sec-article,
+.toolbar-card > * {
+  min-inline-size: 0;
 }
 
 .apple-hero {
@@ -935,7 +1048,7 @@ button, input, textarea, select {
 
 .bento-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
   gap: 14px;
   margin-bottom: 18px;
 }
@@ -1284,8 +1397,10 @@ dialog.study-dialog {
   border-radius: var(--radius-lg);
   background: var(--surface);
   color: var(--text);
-  width: min(860px, calc(100vw - 24px));
+  width: min(860px, calc(100% - 20px));
+  inline-size: min(53.75rem, calc(100dvw - 1.25rem));
   max-height: 88vh;
+  max-block-size: 88dvh;
   padding: 0;
   box-shadow: var(--shadow-lg);
   overflow: hidden;
@@ -1295,7 +1410,7 @@ dialog.study-dialog::backdrop {
   backdrop-filter: blur(8px);
 }
 .dialog-head {
-  padding: 18px 24px;
+  padding: 16px 20px;
   border-bottom: 1px solid var(--border);
   display: flex;
   justify-content: space-between;
@@ -1304,19 +1419,21 @@ dialog.study-dialog::backdrop {
 }
 .dialog-head h2 {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: 1.08rem;
   font-weight: 800;
 }
 .dialog-body {
-  padding: 22px 24px;
+  padding: clamp(1rem, 3vw, 1.4rem) clamp(1rem, 3.5vw, 1.5rem);
   overflow-y: auto;
-  max-height: calc(88vh - 68px);
+  overscroll-behavior: contain;
+  max-height: calc(88vh - 4.5rem);
+  max-block-size: calc(88dvh - 4.5rem);
 }
 
 .drop-zone {
   border: 2px dashed var(--border-strong);
   border-radius: var(--radius-md);
-  padding: 24px;
+  padding: 20px;
   text-align: center;
   background: var(--bg-alt);
   margin-bottom: 14px;
@@ -1329,7 +1446,7 @@ dialog.study-dialog::backdrop {
 /* ---------- Responsive Breakpoints ---------- */
 @media (max-width: 1099px) {
   .apple-hero, .learn-layout, .essay-split {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .kpi-bento {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1355,17 +1472,45 @@ dialog.study-dialog::backdrop {
   }
 }
 
-@media (max-width: 720px) {
-  .kpi-bento, .matrix-grid, .diag-grid-3, .diag-grid-2, .compare-grid {
-    grid-template-columns: 1fr;
-  }
-  .save-badge {
+@media (max-width: 47.99rem) {
+  .subbar-title {
     display: none;
   }
   .subbar-inner {
-    flex-direction: column;
-    align-items: stretch;
-    padding-top: 8px;
+    padding-inline: max(0.5rem, env(safe-area-inset-left, 0px)) max(0.5rem, env(safe-area-inset-right, 0px));
+    min-block-size: 2.75rem;
+  }
+  [role="tablist"].mode-tabs {
+    inline-size: 100%;
+    justify-content: space-between;
+    gap: 2px;
+  }
+  [role="tab"].mode-tab {
+    flex: 1 1 0;
+    text-align: center;
+    padding: 0.7rem 0.375rem;
+    font-size: 0.81rem;
+  }
+}
+
+@media (max-width: 23rem) {
+  [role="tab"].mode-tab {
+    flex: 0 0 auto;
+    padding: 0.7rem 0.65rem;
+  }
+}
+
+@media (max-width: 720px) {
+  .kpi-bento, .matrix-grid, .diag-grid-3, .diag-grid-2, .compare-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .apple-hero,
+  .chapter-goal-banner,
+  .diagram-studio,
+  .sec-article,
+  .mcq-card,
+  .essay-workspace {
+    padding: 1.25rem 1.125rem;
   }
 }
 
@@ -1378,16 +1523,18 @@ dialog.study-dialog::backdrop {
     <div class="header-inner">
       <button type="button" class="brand-btn" id="brand-home-btn" title="상권 진도표 대시보드로 이동">
         <span class="brand-dot" aria-hidden="true"></span>
-        <span>학교상담과 생활지도 <small style="font-weight:500;color:var(--text-muted)">상권 (01~06장)</small></span>
+        <span class="brand-title">학교상담과 생활지도 <small class="brand-sub">상권 (01~06장)</small></span>
       </button>
 
       <nav class="chapter-nav" id="chapter-nav" aria-label="장 바로가기"></nav>
 
       <div class="header-actions">
         <span class="save-badge" id="autosave-badge">● 자동 저장 켜짐</span>
-        <button type="button" class="btn btn-sm" id="open-gemini-btn">문제팩 불러오기 (＋)</button>
-        <button type="button" class="btn btn-sm" id="open-progress-btn">진도표 · 백업</button>
-        <button type="button" class="btn btn-sm" id="theme-toggle-btn">🌙 다크 모드</button>
+        <button type="button" class="btn btn-sm" id="open-gemini-btn"><span aria-hidden="true">＋</span><span>문제팩</span></button>
+        <button type="button" class="btn btn-sm" id="open-progress-btn"><span>진도·백업</span></button>
+        <button type="button" class="btn btn-sm theme-btn" id="theme-toggle-btn" aria-label="테마 전환">
+          <span id="theme-icon" aria-hidden="true">🌙</span><span class="theme-btn-label" id="theme-label">다크 모드</span>
+        </button>
       </div>
     </div>
   </header>
@@ -2868,29 +3015,59 @@ ${syllabusLines}
     };
   }
 
+  function syncStickyHeights() {
+    const docEl = document.documentElement;
+    if (!docEl || !docEl.style || typeof docEl.style.setProperty !== "function") return;
+    const headerEl = document.querySelector(".global-header");
+    const subbarEl = document.getElementById("chapter-subbar");
+    if (headerEl && typeof headerEl.getBoundingClientRect === "function") {
+      const h = Math.ceil(headerEl.getBoundingClientRect().height);
+      if (h > 0) docEl.style.setProperty("--header-h", `${h}px`);
+    }
+    if (subbarEl && !subbarEl.hidden && typeof subbarEl.getBoundingClientRect === "function") {
+      const sh = Math.ceil(subbarEl.getBoundingClientRect().height);
+      docEl.style.setProperty("--subnav-h", `${sh > 0 ? sh : 0}px`);
+    } else {
+      docEl.style.setProperty("--subnav-h", "0px");
+    }
+  }
+
   function applyTheme() {
     const theme = STORE.getState().theme || "light";
+    const isDark = theme === "dark";
     document.documentElement.setAttribute("data-theme", theme);
     const btn = document.getElementById("theme-toggle-btn");
-    if (btn) btn.textContent = theme === "dark" ? "☀️ 라이트 모드" : "🌙 다크 모드";
+    const iconEl = document.getElementById("theme-icon");
+    const labelEl = document.getElementById("theme-label");
+    if (iconEl) iconEl.textContent = isDark ? "☀️" : "🌙";
+    if (labelEl) labelEl.textContent = isDark ? "라이트 모드" : "다크 모드";
+    if (btn) {
+      const nextActionLabel = isDark ? "라이트 모드로 전환" : "다크 모드로 전환";
+      btn.setAttribute("aria-label", nextActionLabel);
+      btn.title = nextActionLabel;
+      if (!iconEl && !labelEl) btn.textContent = isDark ? "☀️ 라이트 모드" : "🌙 다크 모드";
+    }
   }
 
   function renderHeader() {
     const pack = getActivePack();
     const chNav = document.getElementById("chapter-nav");
     chNav.innerHTML = [
-      `<button type="button" class="chap-pill ${ui.view === "dashboard" ? "is-active" : ""}" data-nav-home="true">진도표 홈</button>`,
-      ...DATA.chapters.map(
-        (c) =>
-          `<button type="button" class="chap-pill ${ui.view === "chapter" && ui.chapter === c.chapter ? "is-active" : ""}" data-nav-ch="${
-            c.chapter
-          }">${c.chapter}장 · ${esc(c.meta.shortTitle)}</button>`
-      ),
+      `<button type="button" class="chap-pill ${ui.view === "dashboard" ? "is-active" : ""}" ${
+        ui.view === "dashboard" ? 'aria-current="page"' : ""
+      } data-nav-home="true">진도표 홈</button>`,
+      ...DATA.chapters.map((c) => {
+        const isCurrent = ui.view === "chapter" && ui.chapter === c.chapter;
+        return `<button type="button" class="chap-pill ${isCurrent ? "is-active" : ""}" ${
+          isCurrent ? 'aria-current="page"' : ""
+        } data-nav-ch="${c.chapter}">${c.chapter}장 · ${esc(c.meta.shortTitle)}</button>`;
+      }),
     ].join("");
 
     const packBtn = document.getElementById("open-gemini-btn");
     if (packBtn) {
-      packBtn.textContent = `문제팩: ${pack.name.length > 16 ? pack.name.slice(0, 16) + "…" : pack.name} (＋)`;
+      packBtn.title = `활성 문제팩: ${pack.name}`;
+      packBtn.setAttribute("aria-label", `문제팩 관리 및 불러오기 (현재: ${pack.name})`);
     }
 
     chNav.querySelectorAll("[data-nav-home]").forEach((b) =>
@@ -2901,6 +3078,12 @@ ${syllabusLines}
         navigate({ view: "chapter", chapter: parseInt(b.dataset.navCh, 10), mode: ui.mode || "learn" })
       )
     );
+
+    const activePill = chNav.querySelector('[aria-current="page"]');
+    if (activePill && typeof chNav.scrollTo === "function" && chNav.clientWidth > 0) {
+      const targetLeft = Math.max(0, activePill.offsetLeft - (chNav.clientWidth - activePill.offsetWidth) / 2);
+      chNav.scrollTo({ left: targetLeft, behavior: "auto" });
+    }
   }
 
   function renderSubbar() {
@@ -3011,7 +3194,7 @@ ${syllabusLines}
           <div class="kpi-text">
             <h4>활성 문제팩 · 회차</h4>
             <div class="kpi-val">${m.round}회차 진행 중</div>
-            <div class="kpi-sub">${esc(pack.name.slice(0, 18))}</div>
+            <div class="kpi-sub">${esc(pack.name)}</div>
           </div>
         </div>
       </section>
@@ -3818,12 +4001,12 @@ ${syllabusLines}
           ${getAllPacks()
             .map(
               (p) => `
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border:1px solid var(--border);border-radius:12px;background:var(--bg-alt)">
-              <div>
+            <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--border);border-radius:12px;background:var(--bg-alt)">
+              <div style="min-width:0;flex:1 1 200px">
                 <strong>${esc(p.name)}</strong> ${p.id === state.activePackId ? `<span class="bento-badge" style="margin:0 0 0 6px">활성</span>` : ""}
                 <div style="font-size:0.78rem;color:var(--text-muted)">객관식 ${(p.mcqs || []).length}문항 · 논술형 ${(p.essays || []).length}문항 (${esc(p.source || "")})</div>
               </div>
-              <div style="display:flex;gap:6px">
+              <div style="display:flex;gap:6px;flex-shrink:0">
                 <button type="button" class="btn btn-sm" data-use-pack="${esc(p.id)}">선택</button>
                 ${!p.isDefault ? `<button type="button" class="btn btn-sm btn-danger" data-del-pack="${esc(p.id)}">삭제</button>` : ""}
               </div>
@@ -4131,6 +4314,7 @@ ${syllabusLines}
       else if (ui.mode === "mcq") renderMcqMode(root, ch);
       else renderEssayMode(root, ch);
     }
+    syncStickyHeights();
   }
 
   async function init() {
@@ -4187,6 +4371,14 @@ ${syllabusLines}
       const badge = document.getElementById("autosave-badge");
       if (badge) badge.textContent = `● 자동 저장됨 ${timeStr}`;
     });
+
+    if (typeof ResizeObserver === "function") {
+      const stickyObserver = new ResizeObserver(() => syncStickyHeights());
+      const headerEl = document.querySelector(".global-header");
+      const subbarEl = document.getElementById("chapter-subbar");
+      if (headerEl) stickyObserver.observe(headerEl);
+      if (subbarEl) stickyObserver.observe(subbarEl);
+    }
 
     renderApp();
   }

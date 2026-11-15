@@ -124,29 +124,59 @@
     };
   }
 
+  function syncStickyHeights() {
+    const docEl = document.documentElement;
+    if (!docEl || !docEl.style || typeof docEl.style.setProperty !== "function") return;
+    const headerEl = document.querySelector(".global-header");
+    const subbarEl = document.getElementById("chapter-subbar");
+    if (headerEl && typeof headerEl.getBoundingClientRect === "function") {
+      const h = Math.ceil(headerEl.getBoundingClientRect().height);
+      if (h > 0) docEl.style.setProperty("--header-h", `${h}px`);
+    }
+    if (subbarEl && !subbarEl.hidden && typeof subbarEl.getBoundingClientRect === "function") {
+      const sh = Math.ceil(subbarEl.getBoundingClientRect().height);
+      docEl.style.setProperty("--subnav-h", `${sh > 0 ? sh : 0}px`);
+    } else {
+      docEl.style.setProperty("--subnav-h", "0px");
+    }
+  }
+
   function applyTheme() {
     const theme = STORE.getState().theme || "light";
+    const isDark = theme === "dark";
     document.documentElement.setAttribute("data-theme", theme);
     const btn = document.getElementById("theme-toggle-btn");
-    if (btn) btn.textContent = theme === "dark" ? "☀️ 라이트 모드" : "🌙 다크 모드";
+    const iconEl = document.getElementById("theme-icon");
+    const labelEl = document.getElementById("theme-label");
+    if (iconEl) iconEl.textContent = isDark ? "☀️" : "🌙";
+    if (labelEl) labelEl.textContent = isDark ? "라이트 모드" : "다크 모드";
+    if (btn) {
+      const nextActionLabel = isDark ? "라이트 모드로 전환" : "다크 모드로 전환";
+      btn.setAttribute("aria-label", nextActionLabel);
+      btn.title = nextActionLabel;
+      if (!iconEl && !labelEl) btn.textContent = isDark ? "☀️ 라이트 모드" : "🌙 다크 모드";
+    }
   }
 
   function renderHeader() {
     const pack = getActivePack();
     const chNav = document.getElementById("chapter-nav");
     chNav.innerHTML = [
-      `<button type="button" class="chap-pill ${ui.view === "dashboard" ? "is-active" : ""}" data-nav-home="true">진도표 홈</button>`,
-      ...DATA.chapters.map(
-        (c) =>
-          `<button type="button" class="chap-pill ${ui.view === "chapter" && ui.chapter === c.chapter ? "is-active" : ""}" data-nav-ch="${
-            c.chapter
-          }">${c.chapter}장 · ${esc(c.meta.shortTitle)}</button>`
-      ),
+      `<button type="button" class="chap-pill ${ui.view === "dashboard" ? "is-active" : ""}" ${
+        ui.view === "dashboard" ? 'aria-current="page"' : ""
+      } data-nav-home="true">진도표 홈</button>`,
+      ...DATA.chapters.map((c) => {
+        const isCurrent = ui.view === "chapter" && ui.chapter === c.chapter;
+        return `<button type="button" class="chap-pill ${isCurrent ? "is-active" : ""}" ${
+          isCurrent ? 'aria-current="page"' : ""
+        } data-nav-ch="${c.chapter}">${c.chapter}장 · ${esc(c.meta.shortTitle)}</button>`;
+      }),
     ].join("");
 
     const packBtn = document.getElementById("open-gemini-btn");
     if (packBtn) {
-      packBtn.textContent = `문제팩: ${pack.name.length > 16 ? pack.name.slice(0, 16) + "…" : pack.name} (＋)`;
+      packBtn.title = `활성 문제팩: ${pack.name}`;
+      packBtn.setAttribute("aria-label", `문제팩 관리 및 불러오기 (현재: ${pack.name})`);
     }
 
     chNav.querySelectorAll("[data-nav-home]").forEach((b) =>
@@ -157,6 +187,12 @@
         navigate({ view: "chapter", chapter: parseInt(b.dataset.navCh, 10), mode: ui.mode || "learn" })
       )
     );
+
+    const activePill = chNav.querySelector('[aria-current="page"]');
+    if (activePill && typeof chNav.scrollTo === "function" && chNav.clientWidth > 0) {
+      const targetLeft = Math.max(0, activePill.offsetLeft - (chNav.clientWidth - activePill.offsetWidth) / 2);
+      chNav.scrollTo({ left: targetLeft, behavior: "auto" });
+    }
   }
 
   function renderSubbar() {
@@ -267,7 +303,7 @@
           <div class="kpi-text">
             <h4>활성 문제팩 · 회차</h4>
             <div class="kpi-val">${m.round}회차 진행 중</div>
-            <div class="kpi-sub">${esc(pack.name.slice(0, 18))}</div>
+            <div class="kpi-sub">${esc(pack.name)}</div>
           </div>
         </div>
       </section>
@@ -1074,12 +1110,12 @@
           ${getAllPacks()
             .map(
               (p) => `
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border:1px solid var(--border);border-radius:12px;background:var(--bg-alt)">
-              <div>
+            <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--border);border-radius:12px;background:var(--bg-alt)">
+              <div style="min-width:0;flex:1 1 200px">
                 <strong>${esc(p.name)}</strong> ${p.id === state.activePackId ? `<span class="bento-badge" style="margin:0 0 0 6px">활성</span>` : ""}
                 <div style="font-size:0.78rem;color:var(--text-muted)">객관식 ${(p.mcqs || []).length}문항 · 논술형 ${(p.essays || []).length}문항 (${esc(p.source || "")})</div>
               </div>
-              <div style="display:flex;gap:6px">
+              <div style="display:flex;gap:6px;flex-shrink:0">
                 <button type="button" class="btn btn-sm" data-use-pack="${esc(p.id)}">선택</button>
                 ${!p.isDefault ? `<button type="button" class="btn btn-sm btn-danger" data-del-pack="${esc(p.id)}">삭제</button>` : ""}
               </div>
@@ -1387,6 +1423,7 @@
       else if (ui.mode === "mcq") renderMcqMode(root, ch);
       else renderEssayMode(root, ch);
     }
+    syncStickyHeights();
   }
 
   async function init() {
@@ -1443,6 +1480,14 @@
       const badge = document.getElementById("autosave-badge");
       if (badge) badge.textContent = `● 자동 저장됨 ${timeStr}`;
     });
+
+    if (typeof ResizeObserver === "function") {
+      const stickyObserver = new ResizeObserver(() => syncStickyHeights());
+      const headerEl = document.querySelector(".global-header");
+      const subbarEl = document.getElementById("chapter-subbar");
+      if (headerEl) stickyObserver.observe(headerEl);
+      if (subbarEl) stickyObserver.observe(subbarEl);
+    }
 
     renderApp();
   }

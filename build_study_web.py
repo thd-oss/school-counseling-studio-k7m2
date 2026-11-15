@@ -33,7 +33,7 @@ def main():
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
   <title>학교상담과 생활지도 (상권) · 인터랙티브 학습 스튜디오</title>
   <style>
@@ -47,16 +47,18 @@ def main():
     <div class="header-inner">
       <button type="button" class="brand-btn" id="brand-home-btn" title="상권 진도표 대시보드로 이동">
         <span class="brand-dot" aria-hidden="true"></span>
-        <span>학교상담과 생활지도 <small style="font-weight:500;color:var(--text-muted)">상권 (01~06장)</small></span>
+        <span class="brand-title">학교상담과 생활지도 <small class="brand-sub">상권 (01~06장)</small></span>
       </button>
 
       <nav class="chapter-nav" id="chapter-nav" aria-label="장 바로가기"></nav>
 
       <div class="header-actions">
         <span class="save-badge" id="autosave-badge">● 자동 저장 켜짐</span>
-        <button type="button" class="btn btn-sm" id="open-gemini-btn">문제팩 불러오기 (＋)</button>
-        <button type="button" class="btn btn-sm" id="open-progress-btn">진도표 · 백업</button>
-        <button type="button" class="btn btn-sm" id="theme-toggle-btn">🌙 다크 모드</button>
+        <button type="button" class="btn btn-sm" id="open-gemini-btn"><span aria-hidden="true">＋</span><span>문제팩</span></button>
+        <button type="button" class="btn btn-sm" id="open-progress-btn"><span>진도·백업</span></button>
+        <button type="button" class="btn btn-sm theme-btn" id="theme-toggle-btn" aria-label="테마 전환">
+          <span id="theme-icon" aria-hidden="true">🌙</span><span class="theme-btn-label" id="theme-label">다크 모드</span>
+        </button>
       </div>
     </div>
   </header>
