@@ -605,12 +605,15 @@ select.btn {
 .pillar-grid > *,
 .pillar-card,
 .exam-highlight-strip,
-.apple-theater-stage,
-.theater-header > *,
-.theater-sticky-grid > *,
-.theater-visual-sticky,
-.theater-beats-track,
-.story-beat-card,
+.theater-runway,
+.theater-sticky-viewport,
+.theater-topbar > *,
+.theater-stage-body > *,
+.theater-visual-frame,
+.theater-svg-mount,
+.theater-spec-column,
+.theater-spec-deck,
+.story-beat-slide,
 .subsec-study-stack,
 .subsec-study-stack > *,
 .subsec-card,
@@ -618,6 +621,10 @@ select.btn {
 .spec-table-card,
 .inline-viz-mount,
 .inline-viz-studio,
+.viz-stage-frame,
+.viz-telemetry-hud,
+.viz-tel-grid,
+.viz-tel-card,
 .deep-drawer,
 .deep-body,
 .deep-sub,
@@ -1801,8 +1808,18 @@ dialog.study-dialog::backdrop {
   color: var(--text-secondary);
 }
 
-/* Zone 2: Dark Optical Apple Pinned Story Stage */
-.apple-theater-stage {
+/* Zone 2: Dark Optical Apple Single-Viewport Sticky Runway & Spec Crossfade */
+.theater-runway {
+  position: relative;
+  block-size: calc(100vh + (var(--beat-count, 4) - 1) * 64vh);
+  block-size: calc(100svh + (var(--beat-count, 4) - 1) * 64svh);
+  margin-bottom: 30px;
+  scroll-margin-top: calc(var(--header-h) + var(--subnav-h) + 8px);
+  max-inline-size: 100%;
+}
+
+.apple-theater-stage,
+.theater-sticky-viewport {
   --viz-canvas: #070a11;
   --viz-surface: #111726;
   --viz-surface-alt: #182034;
@@ -1824,163 +1841,239 @@ dialog.study-dialog::backdrop {
   color: #f5f5f7;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 26px;
-  padding: clamp(1.35rem, 3vw, 2.4rem);
-  margin-bottom: 30px;
+  padding: clamp(0.95rem, 2.2vw, 1.85rem);
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.24);
-  scroll-margin-top: calc(var(--header-h) + var(--subnav-h) + 18px);
   max-inline-size: 100%;
 }
-.theater-header {
+
+.theater-sticky-viewport {
+  position: sticky;
+  top: calc(var(--header-h) + var(--subnav-h) + 8px);
+  block-size: calc(100vh - var(--header-h) - var(--subnav-h) - 16px);
+  block-size: calc(100svh - var(--header-h) - var(--subnav-h) - 16px);
+  max-block-size: 760px;
+  min-block-size: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 1.4svh, 16px);
+  overflow: hidden;
+}
+
+.theater-topbar {
+  flex: 0 0 auto;
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
   align-items: flex-end;
-  gap: 14px;
-  margin-bottom: 20px;
+  gap: 8px 16px;
+}
+.theater-title-wrap {
+  min-inline-size: 0;
+  flex: 1 1 240px;
 }
 .theater-kicker {
   display: block;
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.08em;
   color: #2997ff;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
-.theater-header h2 {
+.theater-topbar h2 {
   margin: 0;
-  font-size: clamp(1.25rem, 2.3vw, 1.8rem);
+  font-size: clamp(1.12rem, 2.1vw, 1.65rem);
   font-weight: 800;
   letter-spacing: -0.03em;
+  line-height: 1.24;
   color: #f5f5f7;
 }
 .theater-sub {
-  margin: 6px 0 0;
-  font-size: 0.9rem;
+  margin: 4px 0 0;
+  font-size: 0.86rem;
   color: #a1a1aa;
   max-width: 68ch;
+  line-height: 1.45;
 }
-.theater-hud {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  min-inline-size: 0;
-  max-inline-size: 100%;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 999px;
-  padding: 6px 14px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: #e4e4e7;
-  font-variant-numeric: tabular-nums;
-}
-.theater-dot-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.theater-dot-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  background: rgba(255, 255, 255, 0.08);
-  color: #e4e4e7;
-  font-size: 0.75rem;
-  font-weight: 800;
-  cursor: pointer;
-  transition: background-color 180ms ease, border-color 180ms ease, transform 180ms ease;
-}
-.theater-dot-btn.is-active {
-  background: #2997ff;
-  border-color: #2997ff;
-  color: #ffffff;
-  transform: scale(1.06);
-}
-.theater-sticky-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
-  gap: 22px;
-  align-items: start;
-}
-.theater-visual-sticky {
-  position: sticky;
-  top: calc(var(--header-h) + var(--subnav-h) + 20px);
-  background: #0d1018;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 20px;
-  padding: 14px;
-  max-inline-size: 100%;
-}
-.theater-svg {
-  width: 100%;
-  max-inline-size: 100%;
-  height: auto;
-  display: block;
-}
-.theater-beats-track {
+
+.theater-progress-meta {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 14px;
+  gap: 5px;
+  justify-items: end;
+  min-inline-size: 112px;
 }
-.story-beat-card {
+.theater-step-count {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #cbd5e1;
+  font-variant-numeric: tabular-nums;
+}
+.theater-progress-rail {
+  display: grid;
+  grid-template-columns: repeat(var(--beat-count, 4), minmax(18px, 1fr));
+  gap: 5px;
+  width: min(148px, 42vw);
+}
+.theater-seg {
+  display: block;
+  height: 3.5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  overflow: hidden;
+}
+.theater-seg-fill {
+  display: block;
   width: 100%;
-  max-inline-size: 100%;
-  text-align: left;
-  background: rgba(255, 255, 255, 0.04);
+  height: 100%;
+  border-radius: inherit;
+  background: #2997ff;
+  transform-origin: left center;
+  transition: transform 110ms linear;
+}
+
+.theater-stage-body {
+  flex: 1 1 0%;
+  min-block-size: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.22fr) minmax(0, 0.78fr);
+  gap: clamp(10px, 2vw, 22px);
+  align-items: stretch;
+}
+.theater-visual-frame {
+  background: #0d1018;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 18px;
-  padding: 18px 20px;
-  color: #d4d4d8;
+  padding: clamp(6px, 1.2vw, 14px);
+  display: grid;
+  place-items: center;
+  min-block-size: 0;
+  overflow: hidden;
+  touch-action: pan-y;
+}
+.theater-svg-mount {
+  inline-size: 100%;
+  block-size: 100%;
+  min-block-size: 0;
+  min-inline-size: 0;
+  display: grid;
+  place-items: center;
+}
+.theater-svg {
+  inline-size: 100%;
+  block-size: 100%;
+  max-inline-size: 100%;
+  max-block-size: 100%;
+  display: block;
+}
+.theater-svg-hotspot {
   cursor: pointer;
-  transition: background-color 220ms ease, border-color 220ms ease, transform 220ms ease;
+  outline: none;
 }
-.story-beat-card:hover {
-  background: rgba(255, 255, 255, 0.08);
+.theater-svg-hotspot:focus-visible {
+  outline: 2px solid #2997ff;
+  outline-offset: 2px;
 }
-.story-beat-card.is-active {
-  background: rgba(41, 151, 255, 0.14);
-  border-color: #2997ff;
+
+.theater-spec-column {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  min-block-size: 0;
+}
+.theater-spec-deck {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  min-block-size: 0;
+  touch-action: pan-y;
+}
+.story-beat-slide {
+  grid-area: 1 / 1;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-inline-size: 100%;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px);
+  pointer-events: none;
+  background: #0d1524;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 18px;
+  padding: clamp(12px, 2vw, 22px);
+  color: #e4e8f0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  align-content: center;
+  transition: opacity 150ms ease, transform 200ms cubic-bezier(0.25, 1, 0.5, 1), visibility 0s linear 150ms;
+}
+.story-beat-slide.is-active {
+  z-index: 2;
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
+  background: #10203a;
+  border-color: rgba(41, 151, 255, 0.72);
   color: #ffffff;
-  transform: translateX(-2px);
+  transition: opacity 180ms ease 20ms, transform 220ms cubic-bezier(0.25, 1, 0.5, 1), visibility 0s;
 }
 .story-beat-top {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 6px 8px;
 }
 .story-beat-badge {
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   font-weight: 800;
   color: #7ec2ff;
-  background: rgba(41, 151, 255, 0.16);
+  background: rgba(41, 151, 255, 0.18);
   padding: 3px 10px;
   border-radius: 999px;
 }
-.story-beat-metric {
-  font-size: 0.76rem;
-  font-weight: 700;
-  color: #30d158;
+.story-spec-callout {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(52, 211, 153, 0.14);
+  border: 1px solid rgba(52, 211, 153, 0.34);
   font-variant-numeric: tabular-nums;
 }
-.story-beat-card h3 {
-  margin: 0 0 6px;
-  font-size: 1.02rem;
+.story-spec-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #a7f3d0;
+}
+.story-spec-value {
+  font-size: 0.76rem;
   font-weight: 800;
+  color: #34d399;
+}
+.story-beat-slide h3 {
+  margin: 0;
+  font-size: clamp(0.95rem, 1.35vw, 1.14rem);
+  font-weight: 800;
+  line-height: 1.32;
   color: inherit;
 }
-.story-beat-card p {
+.story-beat-slide p {
   margin: 0;
-  font-size: 0.87rem;
-  line-height: 1.62;
-  color: #b4b8c2;
+  font-size: clamp(0.8rem, 1.1vw, 0.91rem);
+  line-height: 1.56;
+  color: #d4dbe6;
 }
-.story-beat-card.is-active p {
-  color: #e4e8f0;
+.theater-sync-hint {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  text-align: center;
+  line-height: 1.35;
 }
 
 /* Zone 3: Rich Subsection Study Cards, Clinical Dialogues & Spec Tables */
@@ -2296,9 +2389,15 @@ dialog.study-dialog::backdrop {
     inset 0 -0.5px 0 rgba(255, 255, 255, 0.12),
     0 14px 36px rgba(0, 0, 0, 0.34);
   color: #f5f5f7;
+  transition: opacity 220ms ease, transform 240ms cubic-bezier(0.25, 1, 0.5, 1);
 }
 .liquid-pill[hidden] {
   display: none;
+}
+.liquid-pill.is-stage-tucked {
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 18px);
 }
 .pill-ch-tag {
   font-size: 0.76rem;
@@ -2411,7 +2510,9 @@ dialog.study-dialog::backdrop {
     opacity: 1 !important;
     transform: none !important;
   }
-  .story-beat-card,
+  .story-beat-slide,
+  .theater-seg-fill,
+  .liquid-pill,
   .pillar-card,
   .pill-dot,
   .viz-ctrl-pill,
@@ -2454,25 +2555,190 @@ dialog.study-dialog::backdrop {
   }
 }
 
-@media (max-width: 960px) {
-  .theater-sticky-grid {
-    grid-template-columns: minmax(0, 1fr);
+/* Theater Fallback (Reduced Motion or Short Landscape Viewports): Unpin + Horizontal Snap Peek */
+.theater-runway.is-snap-fallback {
+  block-size: auto;
+}
+.theater-runway.is-snap-fallback .theater-sticky-viewport {
+  position: static;
+  block-size: auto;
+  max-block-size: none;
+  overflow: visible;
+}
+.theater-runway.is-snap-fallback .theater-stage-body {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto;
+}
+.theater-runway.is-snap-fallback .theater-visual-frame .theater-svg {
+  block-size: auto;
+  max-block-size: 52svh;
+}
+.theater-runway.is-snap-fallback .theater-spec-deck {
+  grid-template-columns: none;
+  grid-auto-flow: column;
+  grid-auto-columns: min(88%, 22rem);
+  gap: 10px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  padding-bottom: 4px;
+}
+.theater-runway.is-snap-fallback .theater-spec-deck::-webkit-scrollbar {
+  display: none;
+}
+.theater-runway.is-snap-fallback .story-beat-slide {
+  grid-area: auto;
+  scroll-snap-align: start;
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none !important;
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce), (max-height: 530px) {
+  .theater-runway {
+    block-size: auto;
   }
-  .theater-visual-sticky {
+  .theater-sticky-viewport {
     position: static;
+    block-size: auto;
+    max-block-size: none;
+    overflow: visible;
+  }
+  .theater-stage-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+  }
+  .theater-visual-frame .theater-svg {
+    block-size: auto;
+    max-block-size: 52svh;
+  }
+  .theater-spec-deck {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: min(88%, 22rem);
+    gap: 10px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+  }
+  .theater-spec-deck::-webkit-scrollbar {
+    display: none;
+  }
+  .story-beat-slide {
+    grid-area: auto;
+    scroll-snap-align: start;
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: none !important;
+    pointer-events: auto;
+  }
+}
+
+@media (max-width: 959px) {
+  .theater-stage-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+  .theater-spec-column {
+    justify-content: flex-end;
   }
 }
 
 @media (max-width: 720px) {
   .chapter-showcase-hero,
   .master-summary-panel,
-  .apple-theater-stage,
   .subsec-card,
   .inline-viz-studio {
     padding: 1.15rem 1rem;
   }
+  .theater-sticky-viewport {
+    max-block-size: 580px;
+    padding: 0.9rem;
+    border-radius: 20px;
+    gap: 8px;
+  }
+  .theater-sub {
+    display: none;
+  }
+  .theater-topbar {
+    align-items: center;
+    gap: 6px 10px;
+  }
+  .theater-topbar h2 {
+    font-size: clamp(0.98rem, 4.1vw, 1.24rem);
+  }
+  .theater-progress-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    inline-size: 100%;
+    gap: 10px;
+  }
+  .theater-progress-rail {
+    flex: 1 1 auto;
+    width: auto;
+  }
+  .story-beat-slide {
+    padding: 10px 12px;
+    gap: 5px;
+    border-radius: 14px;
+  }
+  .story-beat-slide h3 {
+    font-size: 0.92rem;
+  }
+  .story-beat-slide p {
+    font-size: 0.8rem;
+    line-height: 1.48;
+  }
+  .theater-sync-hint {
+    font-size: 0.68rem;
+  }
+
+  /* Inline Section Studio: Compact 1-Screen Diagram + Horizontal Peek Spec Strip */
+  .viz-ctrl-bar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+  }
+  .viz-ctrl-bar::-webkit-scrollbar {
+    display: none;
+  }
+  .viz-ctrl-pill {
+    flex-shrink: 0;
+  }
   .viz-stage-frame {
     padding: 6px;
+  }
+  .viz-stage-frame .viz-svg {
+    max-block-size: 36svh;
+  }
+  .viz-telemetry-hud {
+    padding: 10px 12px;
+  }
+  .viz-tel-grid {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: min(86%, 19.5rem);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .viz-tel-grid:has(> :only-child) {
+    grid-auto-columns: 100%;
+  }
+  .viz-tel-grid::-webkit-scrollbar {
+    display: none;
+  }
+  .viz-tel-card {
+    scroll-snap-align: start;
   }
   .viz-select-pair {
     grid-template-columns: minmax(0, 1fr);
@@ -2480,6 +2746,36 @@ dialog.study-dialog::backdrop {
   .liquid-pill {
     padding: 8px 12px;
     gap: 8px;
+  }
+}
+
+@media (max-width: 22.5rem) {
+  .theater-sticky-viewport {
+    padding: 0.72rem;
+    border-radius: 16px;
+    gap: 6px;
+  }
+  .theater-topbar h2 {
+    font-size: 0.92rem;
+  }
+  .story-beat-slide {
+    padding: 8px 10px;
+    gap: 4px;
+  }
+  .story-beat-badge,
+  .story-spec-callout {
+    font-size: 0.67rem;
+    padding: 2px 7px;
+  }
+  .story-beat-slide h3 {
+    font-size: 0.85rem;
+  }
+  .story-beat-slide p {
+    font-size: 0.75rem;
+    line-height: 1.42;
+  }
+  .theater-sync-hint {
+    display: none;
   }
 }
 
@@ -3549,17 +3845,63 @@ ${syllabusLines}
     bindSegmentedControls(rootEl, selector, initialId, onChange) {
       const btns = Array.from(rootEl.querySelectorAll(selector));
       if (!btns.length) return;
-      function select(id) {
-        btns.forEach((b) => {
+      const ctrlBar = btns[0].closest(".viz-ctrl-bar");
+      let activeIdx = 0;
+
+      function select(id, fromSwipe = false) {
+        btns.forEach((b, i) => {
           const active = b.dataset.chip === id;
+          if (active) activeIdx = i;
           b.classList.toggle("is-active", active);
           b.setAttribute("aria-pressed", active ? "true" : "false");
+          if (active && fromSwipe && ctrlBar && typeof ctrlBar.scrollTo === "function") {
+            const targetLeft = Math.max(0, b.offsetLeft - ctrlBar.clientWidth / 2 + b.offsetWidth / 2);
+            try {
+              ctrlBar.scrollTo({ left: targetLeft, behavior: "smooth" });
+            } catch (_e) {
+              ctrlBar.scrollLeft = targetLeft;
+            }
+          }
         });
         onChange(id);
       }
-      btns.forEach((b) => b.addEventListener("click", () => select(b.dataset.chip)));
-      select(initialId);
-      return select;
+
+      btns.forEach((b) => b.addEventListener("click", () => select(b.dataset.chip, false)));
+
+      // Enable intuitive horizontal swipe directly on the SVG diagram stage (no jump buttons needed)
+      const stageFrame = rootEl.querySelector(".viz-stage-frame");
+      if (stageFrame && !stageFrame.dataset.swipeBound && btns.length > 1) {
+        stageFrame.dataset.swipeBound = "1";
+        let startX = 0;
+        let startY = 0;
+        stageFrame.addEventListener(
+          "touchstart",
+          (e) => {
+            if (!e.touches || e.touches.length !== 1) return;
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+          },
+          { passive: true }
+        );
+        stageFrame.addEventListener(
+          "touchend",
+          (e) => {
+            if (!e.changedTouches || !e.changedTouches.length) return;
+            const dx = e.changedTouches[0].clientX - startX;
+            const dy = e.changedTouches[0].clientY - startY;
+            if (Math.abs(dx) > 42 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+              const nextIdx = dx < 0 ? Math.min(btns.length - 1, activeIdx + 1) : Math.max(0, activeIdx - 1);
+              if (nextIdx !== activeIdx && btns[nextIdx]) {
+                select(btns[nextIdx].dataset.chip, true);
+              }
+            }
+          },
+          { passive: true }
+        );
+      }
+
+      select(initialId, false);
+      return (id) => select(id, false);
     },
     bindSvgNodes(svgHost, selector, onSelect) {
       const nodes = Array.from(svgHost.querySelectorAll(selector));
@@ -3583,7 +3925,7 @@ ${syllabusLines}
   function mountCh1PinnedSvg(container) {
     const uid = nextUid();
     container.innerHTML = `
-      <svg viewBox="${VIZ_CONST.VIEWBOX_STAGE}" class="theater-svg viz-svg" role="img" aria-label="제01장 스위스 치즈 3중 안전망과 훈육-상담 분리 방화벽 도식">
+      <svg viewBox="${VIZ_CONST.VIEWBOX_STAGE}" preserveAspectRatio="xMidYMid meet" class="theater-svg viz-svg" role="img" aria-label="제01장 스위스 치즈 3중 안전망과 훈육-상담 분리 방화벽 도식">
         ${SvgKit.defs(uid)}
         <rect x="14" y="14" width="532" height="392" rx="18" fill="var(--viz-canvas)" stroke="var(--viz-keyline)" stroke-width="1"/>
 
@@ -3596,7 +3938,7 @@ ${syllabusLines}
         <text x="64" y="210" text-anchor="middle" fill="var(--viz-ink-sub)" font-size="9.5">발달 신호</text>
 
         <!-- Layer 0: Tier 1 Slice -->
-        <g data-ch1-layer="0" style="transition:opacity 240ms ease,transform 260ms ease">
+        <g data-ch1-layer="0" data-stage-region="0" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="1단계 Tier 1 보편 예방 보기" style="transition:opacity 240ms ease,transform 260ms ease">
           <polygon points="122,92 204,76 204,284 122,300" fill="var(--viz-primary-soft)" stroke="var(--viz-primary)" stroke-width="2.2"/>
           <ellipse cx="163" cy="188" rx="18" ry="22" fill="var(--viz-canvas)" stroke="var(--viz-primary)" stroke-width="1.5" stroke-dasharray="4 3"/>
           <text x="163" y="185" text-anchor="middle" fill="var(--viz-primary)" font-size="9" font-weight="700">개별욕구</text>
@@ -3610,7 +3952,7 @@ ${syllabusLines}
         <path id="${uid}-p12" d="M 181 188 L 246 188" fill="none" stroke="var(--viz-warn)" stroke-width="2.2" pathLength="1" stroke-dasharray="1" stroke-dashoffset="0"/>
 
         <!-- Layer 1: Tier 2 Slice -->
-        <g data-ch1-layer="1" style="transition:opacity 240ms ease,transform 260ms ease">
+        <g data-ch1-layer="1" data-stage-region="1" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="2단계 Tier 2 조기개입 보기" style="transition:opacity 240ms ease,transform 260ms ease">
           <polygon points="248,92 332,76 332,284 248,300" fill="var(--viz-depth-soft)" stroke="var(--viz-depth)" stroke-width="2.2"/>
           <ellipse cx="290" cy="148" rx="16" ry="18" fill="var(--viz-canvas)" stroke="var(--viz-depth)" stroke-width="1.5" stroke-dasharray="4 3"/>
           <ellipse cx="290" cy="236" rx="17" ry="20" fill="var(--viz-canvas)" stroke="var(--viz-depth)" stroke-width="1.5" stroke-dasharray="4 3"/>
@@ -3624,7 +3966,7 @@ ${syllabusLines}
         <path id="${uid}-p23" d="M 307 236 L 374 236" fill="none" stroke="var(--viz-critical)" stroke-width="2.2" pathLength="1" stroke-dasharray="1" stroke-dashoffset="0"/>
 
         <!-- Layer 2: Tier 3 Slice -->
-        <g data-ch1-layer="2" style="transition:opacity 240ms ease,transform 260ms ease">
+        <g data-ch1-layer="2" data-stage-region="2" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="3단계 Tier 3 심층 연계 보기" style="transition:opacity 240ms ease,transform 260ms ease">
           <polygon points="376,92 462,76 462,284 376,300" fill="var(--viz-warn-soft)" stroke="var(--viz-warn)" stroke-width="2.2"/>
           <ellipse cx="419" cy="176" rx="16" ry="18" fill="var(--viz-canvas)" stroke="var(--viz-warn)" stroke-width="1.5" stroke-dasharray="4 3"/>
           <rect x="387" y="222" width="64" height="28" rx="9" fill="var(--viz-warn)"/>
@@ -3640,7 +3982,7 @@ ${syllabusLines}
         <text x="505" y="218" text-anchor="middle" fill="var(--viz-ink-sub)" font-size="9.5">회복</text>
 
         <!-- Layer 3: Firewall Dock Shutter (Bottom HUD) -->
-        <g data-ch1-layer="3" style="transition:opacity 260ms ease">
+        <g data-ch1-layer="3" data-stage-region="3" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="4단계 훈육-상담 분리 방화벽 보기" style="transition:opacity 260ms ease">
           <rect x="28" y="316" width="214" height="72" rx="12" fill="var(--viz-critical-soft)" stroke="var(--viz-critical)" stroke-width="1.8" stroke-dasharray="5 3"/>
           <text x="135" y="342" text-anchor="middle" fill="var(--viz-critical)" font-size="11.5" font-weight="800">✕ 생활안전부 · 선도위</text>
           <text x="135" y="362" text-anchor="middle" fill="var(--viz-ink-sub)" font-size="10">사안 조사 · 징계 처분 전담</text>
@@ -3720,7 +4062,7 @@ ${syllabusLines}
     }
 
     container.innerHTML = `
-      <svg viewBox="${VIZ_CONST.VIEWBOX_STAGE}" class="theater-svg viz-svg" role="img" aria-label="제02장 만 6세에서 18세까지 변연계와 전두엽 성숙 및 6대 발달이론 동기화 그래프">
+      <svg viewBox="${VIZ_CONST.VIEWBOX_STAGE}" preserveAspectRatio="xMidYMid meet" class="theater-svg viz-svg" role="img" aria-label="제02장 만 6세에서 18세까지 변연계와 전두엽 성숙 및 6대 발달이론 동기화 그래프">
         <rect x="24" y="24" width="512" height="290" rx="16" fill="var(--viz-canvas)" stroke="var(--viz-keyline)"/>
         <line x1="60" y1="96" x2="500" y2="96" stroke="var(--viz-grid)"/>
         <line x1="60" y1="168" x2="500" y2="168" stroke="var(--viz-grid)"/>
@@ -3745,8 +4087,14 @@ ${syllabusLines}
           <text x="470" y="294">16~18세 (고등)</text>
         </g>
 
+        <!-- Interactive Developmental Stage Hotspots -->
+        <rect x="40" y="34" width="124" height="270" rx="8" fill="transparent" data-stage-region="0" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="1단계 만 6~8세 초저 발달 보기"/>
+        <rect x="164" y="34" width="118" height="270" rx="8" fill="transparent" data-stage-region="1" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="2단계 만 9~12세 초고 발달 보기"/>
+        <rect x="282" y="34" width="126" height="270" rx="8" fill="transparent" data-stage-region="2" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="3단계 만 13~15세 중등 발달 보기"/>
+        <rect x="408" y="34" width="120" height="270" rx="8" fill="transparent" data-stage-region="3" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="4단계 만 16~18세 고등 발달 보기"/>
+
         <!-- Continuous Scrub Scanner + Live Tracking Dots -->
-        <g id="${uid}-scanner">
+        <g id="${uid}-scanner" pointer-events="none">
           <line id="${uid}-scan-line" x1="105" y1="44" x2="105" y2="275" stroke="var(--viz-safe)" stroke-width="2.4"/>
           <line id="${uid}-gap-ruler" x1="105" y1="200" x2="105" y2="250" stroke="var(--viz-critical)" stroke-width="3" stroke-dasharray="3 2"/>
           <circle id="${uid}-dot-lim" cx="105" cy="215" r="5.5" fill="var(--viz-warn)" stroke="#ffffff" stroke-width="1.5"/>
@@ -3813,12 +4161,12 @@ ${syllabusLines}
   function mountCh3PinnedSvg(container) {
     const uid = nextUid();
     container.innerHTML = `
-      <svg viewBox="${VIZ_CONST.VIEWBOX_STAGE}" class="theater-svg viz-svg" role="img" aria-label="제03장 윤리 형량 저울 및 고위기 법적 신고 결정 회로">
+      <svg viewBox="${VIZ_CONST.VIEWBOX_STAGE}" preserveAspectRatio="xMidYMid meet" class="theater-svg viz-svg" role="img" aria-label="제03장 윤리 형량 저울 및 고위기 법적 신고 결정 회로">
         ${SvgKit.defs(uid)}
         <rect x="14" y="14" width="532" height="392" rx="18" fill="var(--viz-canvas)" stroke="var(--viz-keyline)" stroke-width="1"/>
 
         <!-- Gate 1: Dual Consent -->
-        <g data-c3="0" style="transition:opacity 240ms ease">
+        <g data-c3="0" data-stage-region="0" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="1단계 학생 승낙과 보호자 동의 보기" style="transition:opacity 240ms ease">
           <rect x="52" y="28" width="200" height="54" rx="12" fill="var(--viz-primary-soft)" stroke="var(--viz-primary)" stroke-width="1.8"/>
           <text x="152" y="51" text-anchor="middle" fill="var(--viz-ink)" font-size="12" font-weight="800">학생 승낙 (Assent)</text>
           <text x="152" y="69" text-anchor="middle" fill="var(--viz-primary)" font-size="10">비밀보장 한계 발달 맞춤 고지</text>
@@ -3830,7 +4178,7 @@ ${syllabusLines}
         </g>
 
         <!-- Gate 2: Kitchener Balance Scale -->
-        <g data-c3="1" style="transition:opacity 240ms ease">
+        <g data-c3="1" data-stage-region="1" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="2단계 키치너 윤리 형량 저울 보기" style="transition:opacity 240ms ease">
           <polygon points="280,122 268,158 292,158" fill="var(--viz-keyline)"/>
           <g id="${uid}-beam" style="transform-origin:280px 132px;transition:transform 260ms cubic-bezier(0.23,1,0.32,1)">
             <line x1="128" y1="132" x2="432" y2="132" stroke="var(--viz-ink)" stroke-width="3"/>
@@ -3845,7 +4193,7 @@ ${syllabusLines}
         </g>
 
         <!-- Gate 3: 3 Legal Immediate Circuits (Draw on Beat 2) -->
-        <g data-c3="2" style="transition:opacity 240ms ease">
+        <g data-c3="2" data-stage-region="2" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="3단계 고위기 예외와 즉시 법적 신고 보기" style="transition:opacity 240ms ease">
           <path id="${uid}-circ-l" d="M 435 190 L 435 214 L 106 238" fill="none" stroke="var(--viz-critical)" stroke-width="2.2" pathLength="1" stroke-dasharray="1" stroke-dashoffset="0"/>
           <path id="${uid}-circ-m" d="M 435 190 L 435 214 L 280 238" fill="none" stroke="var(--viz-warn)" stroke-width="2.2" pathLength="1" stroke-dasharray="1" stroke-dashoffset="0"/>
           <path id="${uid}-circ-r" d="M 435 190 L 435 214 L 454 238" fill="none" stroke="var(--viz-critical)" stroke-width="2.2" pathLength="1" stroke-dasharray="1" stroke-dashoffset="0"/>
@@ -3867,7 +4215,7 @@ ${syllabusLines}
         </g>
 
         <!-- Gate 4: Vault & Self-Care -->
-        <g data-c3="3" style="transition:opacity 240ms ease">
+        <g data-c3="3" data-stage-region="3" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="4단계 기록 분리보관과 상담자 자기돌봄 보기" style="transition:opacity 240ms ease">
           <rect x="44" y="330" width="472" height="60" rx="14" fill="var(--viz-safe-soft)" stroke="var(--viz-safe)" stroke-width="1.8"/>
           <text x="280" y="354" text-anchor="middle" fill="var(--viz-safe)" font-size="12" font-weight="800">✓ 단독소유기록 이중잠금 분리 + 최소 정보 공유</text>
           <text x="280" y="375" text-anchor="middle" fill="var(--viz-ink)" font-size="10.5">소진 · 공감피로(STS) · 대리외상(VT) 조기 변별 &amp; 동료 수퍼비전</text>
@@ -3901,12 +4249,12 @@ ${syllabusLines}
   function mountCh4PinnedSvg(container) {
     const uid = nextUid();
     container.innerHTML = `
-      <svg viewBox="${VIZ_CONST.VIEWBOX_STAGE}" class="theater-svg viz-svg" role="img" aria-label="제04장 45분 단회학생상담 크로노미터와 167시간 일상 전이 아크">
+      <svg viewBox="${VIZ_CONST.VIEWBOX_STAGE}" preserveAspectRatio="xMidYMid meet" class="theater-svg viz-svg" role="img" aria-label="제04장 45분 단회학생상담 크로노미터와 167시간 일상 전이 아크">
         ${SvgKit.defs(uid)}
         <rect x="14" y="14" width="532" height="392" rx="18" fill="var(--viz-canvas)" stroke="var(--viz-keyline)" stroke-width="1"/>
 
         <!-- Outer 167h orbit -->
-        <g data-c4="2" style="transition:opacity 280ms ease">
+        <g data-c4="2" data-stage-region="2" class="theater-svg-hotspot" style="transition:opacity 280ms ease">
           <circle cx="220" cy="212" r="154" fill="none" stroke="var(--viz-safe)" stroke-width="1.8" stroke-dasharray="7 5" opacity="0.55"/>
           <text x="278" y="42" text-anchor="middle" fill="var(--viz-safe)" font-size="11.5" font-weight="800">주 1시간 상담실 → 교실·가정 167시간 행동 실험 전이</text>
         </g>
@@ -3916,25 +4264,25 @@ ${syllabusLines}
         <circle id="${uid}-prog-ring" cx="220" cy="212" r="126" fill="none" stroke="var(--viz-primary)" stroke-width="3.5" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" transform="rotate(-90 220 212)" stroke-linecap="round"/>
 
         <!-- 4 Quadrant Arcs -->
-        <g data-c4="0" style="transition:opacity 240ms ease">
+        <g data-c4="0" data-stage-region="0" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="1단계 초기 접수와 MMSE 보기" style="transition:opacity 240ms ease">
           <path d="M 220 212 L 220 94 A 118 118 0 0 1 338 212 Z" fill="var(--viz-primary-soft)" stroke="var(--viz-primary)" stroke-width="2"/>
           <text x="272" y="158" text-anchor="middle" fill="var(--viz-ink)" font-size="11" font-weight="800">1. 접수·MMSE</text>
           <text x="272" y="174" text-anchor="middle" fill="var(--viz-primary)" font-size="10">5~8분 · 동맹</text>
         </g>
 
-        <g data-c4="1" style="transition:opacity 240ms ease">
+        <g data-c4="1" data-stage-region="1" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="2단계 미시상담기술 보기" style="transition:opacity 240ms ease">
           <path d="M 220 212 L 338 212 A 118 118 0 0 1 220 330 Z" fill="var(--viz-depth-soft)" stroke="var(--viz-depth)" stroke-width="2"/>
           <text x="272" y="264" text-anchor="middle" fill="var(--viz-ink)" font-size="11" font-weight="800">2. 미시기술</text>
           <text x="272" y="280" text-anchor="middle" fill="var(--viz-depth)" font-size="10">SOLER·반영·직면</text>
         </g>
 
-        <g data-c4="2" style="transition:opacity 240ms ease">
+        <g data-c4="2" data-stage-region="2" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="3단계 통합 전략과 167시간 전이 보기" style="transition:opacity 240ms ease">
           <path d="M 220 212 L 220 330 A 118 118 0 0 1 102 212 Z" fill="var(--viz-safe-soft)" stroke="var(--viz-safe)" stroke-width="2"/>
           <text x="168" y="264" text-anchor="middle" fill="var(--viz-ink)" font-size="11" font-weight="800">3. 예외·통합</text>
           <text x="168" y="280" text-anchor="middle" fill="var(--viz-safe)" font-size="10">WDEP·행동실험</text>
         </g>
 
-        <g data-c4="3" style="transition:opacity 240ms ease">
+        <g data-c4="3" data-stage-region="3" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="4단계 실행 리허설과 열린 종결 보기" style="transition:opacity 240ms ease">
           <path d="M 220 212 L 102 212 A 118 118 0 0 1 220 94 Z" fill="var(--viz-warn-soft)" stroke="var(--viz-warn)" stroke-width="2"/>
           <text x="168" y="158" text-anchor="middle" fill="var(--viz-ink)" font-size="11" font-weight="800">4. 실행 리허설</text>
           <text x="168" y="174" text-anchor="middle" fill="var(--viz-warn)" font-size="10">5~7분 · DAP·추수</text>
@@ -4009,7 +4357,7 @@ ${syllabusLines}
       "통합 렌즈: 당위·독심술 검증 · 앞바퀴 조향 · 강점 점화",
     ];
     container.innerHTML = `
-      <svg viewBox="${VIZ_CONST.VIEWBOX_STAGE}" class="theater-svg viz-svg" role="img" aria-label="제05장 공통 사례를 9대 상담이론으로 분광하는 광학 프리즘 맵">
+      <svg viewBox="${VIZ_CONST.VIEWBOX_STAGE}" preserveAspectRatio="xMidYMid meet" class="theater-svg viz-svg" role="img" aria-label="제05장 공통 사례를 9대 상담이론으로 분광하는 광학 프리즘 맵">
         ${SvgKit.defs(uid)}
         <rect x="14" y="14" width="532" height="392" rx="18" fill="var(--viz-canvas)" stroke="var(--viz-keyline)" stroke-width="1"/>
 
@@ -4028,7 +4376,7 @@ ${syllabusLines}
         ${nodes
           .map(
             (n, i) => `
-          <g data-cluster="${n.cluster}" style="transition:opacity 240ms ease">
+          <g data-cluster="${n.cluster}" data-stage-region="${n.cluster}" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="${esc(n.label)} 렌즈 보기" style="transition:opacity 240ms ease">
             <path class="${uid}-ray" data-ray-cluster="${n.cluster}" d="M 294 204 Q 332 ${lerp(204, n.y, 0.45).toFixed(0)} 348 ${n.y}" fill="none" stroke="${n.color}" stroke-width="2.2" pathLength="1" stroke-dasharray="1" stroke-dashoffset="0"/>
             <rect x="350" y="${n.y - 21}" width="176" height="42" rx="11" fill="var(--viz-surface)" stroke="${n.color}" stroke-width="1.8"/>
             <text x="438" y="${n.y - 2}" text-anchor="middle" fill="var(--viz-ink)" font-size="10.8" font-weight="800">${esc(n.label)}</text>
@@ -4077,17 +4425,19 @@ ${syllabusLines}
       [1, 2], [1, 3], [2, 4], [3, 5], [4, 6], [5, 6], [1, 5], [2, 6], [3, 4],
     ];
     container.innerHTML = `
-      <svg viewBox="${VIZ_CONST.VIEWBOX_STAGE}" class="theater-svg viz-svg" role="img" aria-label="제06장 집단상담 소시오그램 발달단계 및 학급단위 확산 도식">
+      <svg viewBox="${VIZ_CONST.VIEWBOX_STAGE}" preserveAspectRatio="xMidYMid meet" class="theater-svg viz-svg" role="img" aria-label="제06장 집단상담 소시오그램 발달단계 및 학급단위 확산 도식">
         <rect x="14" y="14" width="532" height="392" rx="18" fill="var(--viz-canvas)" stroke="var(--viz-keyline)" stroke-width="1"/>
 
         <!-- Tier 1 Classroom Diffusion (Beat 3) -->
-        <g data-c6="3" style="transition:opacity 280ms ease">
+        <g data-c6="3" data-stage-region="3" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="4단계 학급단위 Tier 1 확산 보기" style="transition:opacity 280ms ease">
           <ellipse id="${uid}-tier1-ring" cx="280" cy="216" rx="236" ry="170" fill="var(--viz-safe-soft)" stroke="var(--viz-safe)" stroke-width="2" stroke-dasharray="6 4"/>
+          <rect x="64" y="376" width="432" height="28" rx="10" fill="transparent"/>
           <text x="280" y="396" text-anchor="middle" fill="var(--viz-safe)" font-size="11.5" font-weight="800">TIER 1 확산 · 민주적 학급회의 &amp; 아들러식 격려 (직무의 15~25%)</text>
         </g>
 
         <!-- Stage 1: Radial Spokes to Leader (Beat 0) -->
-        <g data-c6="0" style="transition:opacity 240ms ease">
+        <g data-c6="0" data-stage-region="0" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="1단계 초기단계 방사형 의존 보기" style="transition:opacity 240ms ease">
+          <rect x="44" y="28" width="472" height="30" rx="10" fill="transparent"/>
           ${students
             .map(
               (m) =>
@@ -4098,7 +4448,7 @@ ${syllabusLines}
         </g>
 
         <!-- Stage 2: Transition Conflict & Blocking Shield (Beat 1) -->
-        <g data-c6="1" style="transition:opacity 240ms ease">
+        <g data-c6="1" data-stage-region="1" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="2단계 과도기 차단하기 개입 보기" style="transition:opacity 240ms ease">
           <line x1="175" y1="156" x2="385" y2="156" stroke="var(--viz-critical)" stroke-width="2.6" stroke-dasharray="5 3"/>
           <g id="${uid}-shield" style="transition:transform 260ms cubic-bezier(0.23,1,0.32,1)">
             <path d="M 280 124 L 280 232" stroke="var(--viz-primary)" stroke-width="3.6" stroke-linecap="round"/>
@@ -4109,7 +4459,8 @@ ${syllabusLines}
         </g>
 
         <!-- Stage 3: Horizontal Linking Mesh (Beat 2) -->
-        <g data-c6="2" style="transition:opacity 240ms ease">
+        <g data-c6="2" data-stage-region="2" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="3단계 작업단계 수평 연결짓기 보기" style="transition:opacity 240ms ease">
+          <circle cx="280" cy="230" r="88" fill="transparent"/>
           ${peerLinks
             .map(
               ([a, b]) =>
@@ -5836,8 +6187,9 @@ ${syllabusLines}
 (function () {
   let lenisInstance = null;
   let activeGsapCtx = null;
-  let activeMatchMedia = null;
   let activeScrollListener = null;
+  let activeResizeListener = null;
+  let cleanupCallbacks = [];
   let activeBeats = [];
   let activeSections = [];
   let activeChapter = null;
@@ -5846,6 +6198,25 @@ ${syllabusLines}
     return Boolean(
       window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches
     );
+  }
+
+  function isFallbackSnapMode() {
+    return prefersReducedMotion() || (window.innerHeight || 800) <= 530;
+  }
+
+  function clamp01(v) {
+    return Math.max(0, Math.min(1, Number.isFinite(v) ? v : 0));
+  }
+
+  function getStickyOffsetPx() {
+    try {
+      const cs = getComputedStyle(document.documentElement);
+      const hh = parseFloat(cs.getPropertyValue("--header-h")) || 58;
+      const sh = parseFloat(cs.getPropertyValue("--subnav-h")) || 0;
+      return hh + sh + 8;
+    } catch (_e) {
+      return 115;
+    }
   }
 
   function buildSdfBevelMap() {
@@ -5920,8 +6291,9 @@ ${syllabusLines}
 
   function scrollToElement(el) {
     if (!el) return;
+    const off = -getStickyOffsetPx();
     if (lenisInstance && typeof lenisInstance.scrollTo === "function" && !prefersReducedMotion()) {
-      lenisInstance.scrollTo(el, { offset: -115, duration: 0.85 });
+      lenisInstance.scrollTo(el, { offset: off, duration: 0.8 });
     } else if (typeof el.scrollIntoView === "function") {
       el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
     }
@@ -5932,11 +6304,15 @@ ${syllabusLines}
       window.removeEventListener("scroll", activeScrollListener);
       activeScrollListener = null;
     }
-    if (activeMatchMedia) {
+    if (activeResizeListener) {
+      window.removeEventListener("resize", activeResizeListener);
+      activeResizeListener = null;
+    }
+    while (cleanupCallbacks.length) {
+      const fn = cleanupCallbacks.pop();
       try {
-        activeMatchMedia.revert();
+        fn();
       } catch (_e) {}
-      activeMatchMedia = null;
     }
     if (activeGsapCtx) {
       try {
@@ -5951,6 +6327,7 @@ ${syllabusLines}
     const pill = document.getElementById("apple-section-pill");
     if (pill) {
       pill.hidden = true;
+      pill.classList.remove("is-stage-tucked");
       pill.innerHTML = "";
     }
   }
@@ -6019,68 +6396,189 @@ ${syllabusLines}
     if (!root || !ch) return;
     activeChapter = ch;
 
-    // 1. Mount Pinned SVG Stage
-    const stageEl = root.querySelector(`#pinned-stage-ch${ch.chapter}`);
-    const svgHost = stageEl ? stageEl.querySelector(`#stage-svg-host-${ch.chapter}`) : null;
-    const hudPct = stageEl ? stageEl.querySelector(`#stage-pct-${ch.chapter}`) : null;
-    const hudBeat = stageEl ? stageEl.querySelector(`#stage-beat-lbl-${ch.chapter}`) : null;
+    // 1. Mount Single-Viewport Sticky Runway SVG Stage
+    const runwayEl = root.querySelector(`#pinned-stage-ch${ch.chapter}`);
+    const stickyEl = runwayEl ? runwayEl.querySelector("[data-theater-sticky]") : null;
+    const svgHost = runwayEl ? runwayEl.querySelector(`#stage-svg-host-${ch.chapter}`) : null;
+    const stepLabel = runwayEl ? runwayEl.querySelector(`#stage-beat-lbl-${ch.chapter}`) : null;
+    const segFills = runwayEl ? Array.from(runwayEl.querySelectorAll("[data-stage-seg]")) : [];
+    const visualFrame = runwayEl ? runwayEl.querySelector(".theater-visual-frame") : null;
+    const specDeck = runwayEl ? runwayEl.querySelector(".theater-spec-deck") : null;
 
     let svgCtrl = { updateBeat() {} };
     if (svgHost && window.DiagramEngine && typeof window.DiagramEngine.renderPinnedStageGraphic === "function") {
       svgCtrl = window.DiagramEngine.renderPinnedStageGraphic(svgHost, ch, 0);
     }
 
-    activeBeats = stageEl ? Array.from(stageEl.querySelectorAll("[data-story-beat]")) : [];
-    const beatDots = stageEl ? Array.from(stageEl.querySelectorAll("[data-stage-dot]")) : [];
+    activeBeats = runwayEl ? Array.from(runwayEl.querySelectorAll("[data-story-beat]")) : [];
+    const svgHotspots = runwayEl ? Array.from(runwayEl.querySelectorAll("[data-stage-region]")) : [];
+    let currentBeatIdx = 0;
+
+    function syncFallbackClass() {
+      if (!runwayEl || !runwayEl.classList) return false;
+      const snapMode = isFallbackSnapMode();
+      runwayEl.classList.toggle("is-snap-fallback", snapMode);
+      return snapMode;
+    }
+    syncFallbackClass();
 
     function activateBeat(beatIdx, rawProgress, explicitLocalT) {
       const n = Math.max(1, activeBeats.length);
       const clampedIdx = Math.max(0, Math.min(n - 1, beatIdx));
-      const p = Math.max(0, Math.min(1, rawProgress ?? clampedIdx / Math.max(1, n - 1)));
+      currentBeatIdx = clampedIdx;
+      const p = clamp01(rawProgress ?? clampedIdx / Math.max(1, n - 1));
       const localT =
         typeof explicitLocalT === "number"
-          ? Math.max(0, Math.min(1, explicitLocalT))
+          ? clamp01(explicitLocalT)
           : prefersReducedMotion()
           ? 1
-          : Math.max(0, Math.min(1, p * n - clampedIdx));
-      activeBeats.forEach((b, i) => b.classList.toggle("is-active", i === clampedIdx));
-      beatDots.forEach((d, i) => {
-        d.classList.toggle("is-active", i === clampedIdx);
-        d.setAttribute("aria-pressed", i === clampedIdx ? "true" : "false");
+          : clamp01(p * n - clampedIdx);
+
+      activeBeats.forEach((b, i) => {
+        const act = i === clampedIdx;
+        b.classList.toggle("is-active", act);
+        b.setAttribute("aria-hidden", act ? "false" : "true");
       });
-      if (hudPct) hudPct.textContent = `${Math.round(p * 100)}%`;
-      if (hudBeat) hudBeat.textContent = `BEAT 0${clampedIdx + 1} / 0${n || 4}`;
+
+      svgHotspots.forEach((el) => {
+        const regIdx = parseInt(el.dataset.stageRegion, 10);
+        if (!Number.isNaN(regIdx)) {
+          el.setAttribute("aria-pressed", regIdx === clampedIdx ? "true" : "false");
+        }
+      });
+
+      if (stepLabel) {
+        stepLabel.textContent = `0${clampedIdx + 1} / 0${n || 4}`;
+      }
+
+      segFills.forEach((fill, i) => {
+        const scale = i < clampedIdx ? 1 : i === clampedIdx ? Math.max(0.14, localT) : 0;
+        fill.style.transform = `scaleX(${scale.toFixed(3)})`;
+      });
+
       if (svgCtrl && typeof svgCtrl.updateBeat === "function") {
         svgCtrl.updateBeat(clampedIdx, p, localT);
       }
     }
 
-    activeBeats.forEach((beatEl, i) => {
-      beatEl.addEventListener("click", () => {
-        activateBeat(i, i / Math.max(1, activeBeats.length - 1), 1);
-      });
-    });
-    beatDots.forEach((dotEl) => {
-      dotEl.addEventListener("click", () => {
-        const i = parseInt(dotEl.dataset.stageDot, 10) || 0;
-        activateBeat(i, i / Math.max(1, activeBeats.length - 1), 1);
-        const targetBeat = activeBeats[i];
-        if (targetBeat) scrollToElement(targetBeat);
+    function scrollToRunwayBeat(targetIdx) {
+      const n = Math.max(1, activeBeats.length);
+      const idx = Math.max(0, Math.min(n - 1, targetIdx));
+      const targetFrac = (idx + 0.35) / n;
+
+      if (isFallbackSnapMode() && specDeck) {
+        const targetCard = activeBeats[idx];
+        if (targetCard && typeof specDeck.scrollTo === "function") {
+          const left = Math.max(0, targetCard.offsetLeft - 8);
+          try {
+            specDeck.scrollTo({ left, behavior: prefersReducedMotion() ? "auto" : "smooth" });
+          } catch (_e) {
+            specDeck.scrollLeft = left;
+          }
+        }
+        activateBeat(idx, idx / Math.max(1, n - 1), 1);
+        return;
+      }
+
+      activateBeat(idx, targetFrac, 0.85);
+      if (runwayEl && stickyEl && typeof runwayEl.getBoundingClientRect === "function") {
+        const rect = runwayEl.getBoundingClientRect();
+        const stickyTopPx = getStickyOffsetPx();
+        const scrollable = Math.max(1, (runwayEl.offsetHeight || 0) - (stickyEl.offsetHeight || 0));
+        if (scrollable > 20) {
+          const runwayDocTop = (window.scrollY || window.pageYOffset || 0) + rect.top;
+          const targetY = Math.max(0, runwayDocTop - stickyTopPx + targetFrac * scrollable);
+          if (lenisInstance && typeof lenisInstance.scrollTo === "function" && !prefersReducedMotion()) {
+            lenisInstance.scrollTo(targetY, { duration: 0.55 });
+          } else if (typeof window.scrollTo === "function") {
+            window.scrollTo({ top: targetY, behavior: "smooth" });
+          }
+        }
+      }
+    }
+
+    // Wire direct SVG hotspot taps/clicks & keyboard activation (no jump away from stage)
+    svgHotspots.forEach((hs) => {
+      const regIdx = parseInt(hs.dataset.stageRegion, 10);
+      if (Number.isNaN(regIdx)) return;
+      const onTrigger = (e) => {
+        if (e && typeof e.stopPropagation === "function") e.stopPropagation();
+        scrollToRunwayBeat(regIdx);
+      };
+      hs.addEventListener("click", onTrigger);
+      const onKey = (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onTrigger(e);
+        }
+      };
+      hs.addEventListener("keydown", onKey);
+      cleanupCallbacks.push(() => {
+        hs.removeEventListener("click", onTrigger);
+        hs.removeEventListener("keydown", onKey);
       });
     });
 
-    if (activeBeats.length) activateBeat(0, 0, 1);
+    // Horizontal swipe directly on diagram or sticky stage advances/rewinds beat inside the same screen
+    const swipeTargets = [visualFrame, specDeck].filter(Boolean);
+    swipeTargets.forEach((el) => {
+      let startX = 0;
+      let startY = 0;
+      const onTouchStart = (e) => {
+        if (!e.touches || e.touches.length !== 1) return;
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+      };
+      const onTouchEnd = (e) => {
+        if (isFallbackSnapMode() && el === specDeck) return;
+        if (!e.changedTouches || !e.changedTouches.length) return;
+        const dx = e.changedTouches[0].clientX - startX;
+        const dy = e.changedTouches[0].clientY - startY;
+        if (Math.abs(dx) > 42 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+          const nextIdx = dx < 0 ? currentBeatIdx + 1 : currentBeatIdx - 1;
+          if (nextIdx >= 0 && nextIdx < activeBeats.length) {
+            scrollToRunwayBeat(nextIdx);
+          }
+        }
+      };
+      el.addEventListener("touchstart", onTouchStart, { passive: true });
+      el.addEventListener("touchend", onTouchEnd, { passive: true });
+      cleanupCallbacks.push(() => {
+        el.removeEventListener("touchstart", onTouchStart);
+        el.removeEventListener("touchend", onTouchEnd);
+      });
+    });
+
+    // Fallback horizontal snap scroll sync (reduced motion / short landscape heights)
+    if (specDeck) {
+      const onSnapScroll = () => {
+        if (!isFallbackSnapMode() || activeBeats.length <= 1) return;
+        const deckCenter = specDeck.scrollLeft + specDeck.clientWidth / 2;
+        let closest = 0;
+        let bestDist = Infinity;
+        activeBeats.forEach((card, i) => {
+          const cardCenter = card.offsetLeft + card.offsetWidth / 2;
+          const dist = Math.abs(cardCenter - deckCenter);
+          if (dist < bestDist) {
+            bestDist = dist;
+            closest = i;
+          }
+        });
+        activateBeat(closest, closest / Math.max(1, activeBeats.length - 1), 1);
+      };
+      specDeck.addEventListener("scroll", onSnapScroll, { passive: true });
+      cleanupCallbacks.push(() => specDeck.removeEventListener("scroll", onSnapScroll));
+    }
+
+    if (activeBeats.length) activateBeat(0, 0, isFallbackSnapMode() ? 1 : 0.25);
 
     // 2. Mount Floating Liquid Glass Section Pill
     renderFloatingSectionPill(ch);
     activeSections = Array.from(root.querySelectorAll("article.sec-article[id]"));
 
-    // 3. GSAP Masked Line Reveals & ScrollTrigger Scrub (when CDN loaded & motion allowed)
-    const reduce = prefersReducedMotion();
-    if (!reduce && typeof window.gsap !== "undefined" && typeof window.ScrollTrigger !== "undefined") {
+    // 3. GSAP Masked Line Reveals on Showcase Hero (when CDN loaded & motion allowed)
+    if (!prefersReducedMotion() && typeof window.gsap !== "undefined") {
       const gsap = window.gsap;
-      const ScrollTrigger = window.ScrollTrigger;
-
       activeGsapCtx = gsap.context(() => {
         const lineSpans = gsap.utils.toArray(".motion-line-mask > span", root);
         if (lineSpans.length) {
@@ -6091,72 +6589,68 @@ ${syllabusLines}
           );
         }
       }, root);
-
-      if (stageEl && activeBeats.length > 1) {
-        activeMatchMedia = gsap.matchMedia();
-        activeMatchMedia.add("(min-width: 768px)", () => {
-          ScrollTrigger.create({
-            trigger: stageEl,
-            start: "top 16%",
-            end: "bottom 72%",
-            scrub: 0.8,
-            onUpdate: (self) => {
-              const p = self.progress;
-              const idx = Math.min(activeBeats.length - 1, Math.floor(p * activeBeats.length));
-              activateBeat(idx, p);
-            },
-          });
-        });
+      if (window.ScrollTrigger && typeof window.ScrollTrigger.refresh === "function") {
+        window.ScrollTrigger.refresh();
       }
-
-      ScrollTrigger.refresh();
     }
 
-    // 4. Native lightweight scroll tracker for Section Progress Pill & Mobile/Offline Fallback
+    // 4. Single Source of Truth Scroll Tracker (Runway Sync + Bottom Pill Auto-Tuck)
     function updateOnScroll() {
-      const viewMid = (window.innerHeight || 800) * 0.42;
+      const viewH = window.innerHeight || 800;
+      const viewMid = viewH * 0.42;
+      const snapMode = syncFallbackClass();
 
-      // Update floating section pill dot + internal scaleX bar
-      const pill = document.getElementById("apple-section-pill");
-      if (pill && !pill.hidden && activeSections.length) {
-        let bestIdx = 0;
-        let bestFill = 0;
-        activeSections.forEach((secEl, idx) => {
-          if (typeof secEl.getBoundingClientRect !== "function") return;
-          const r = secEl.getBoundingClientRect();
-          if (r.top <= viewMid) {
-            bestIdx = idx;
-            const totalH = Math.max(1, r.height);
-            bestFill = Math.max(0.08, Math.min(1, (viewMid - r.top) / totalH));
-          }
-        });
-        activeSections.forEach((secEl, idx) => {
-          const dot = pill.querySelector(`[data-pill-sec="${secEl.id}"]`);
-          if (!dot) return;
-          const isCur = idx === bestIdx;
-          dot.classList.toggle("is-current", isCur);
-          const fill = dot.querySelector(".pill-fill");
-          if (fill) {
-            fill.style.transform = `scaleX(${isCur ? bestFill : idx < bestIdx ? 1 : 0})`;
-          }
-        });
+      // Synchronize Zone 2 runway diagram & active single spec caption cleanly
+      let inPinnedViewport = false;
+      if (runwayEl && stickyEl && activeBeats.length > 1 && typeof runwayEl.getBoundingClientRect === "function") {
+        const rect = runwayEl.getBoundingClientRect();
+        const stickyTopPx = getStickyOffsetPx();
+        inPinnedViewport = !snapMode && rect.top < viewH - 96 && rect.bottom > 180;
+
+        if (!snapMode) {
+          const scrollable = Math.max(1, (runwayEl.offsetHeight || 0) - (stickyEl.offsetHeight || 0));
+          const rawP = clamp01((stickyTopPx - rect.top) / scrollable);
+          const n = activeBeats.length;
+          const idx = Math.min(n - 1, Math.floor(rawP * n));
+          const localT = idx === n - 1 && rawP >= 0.99 ? 1 : clamp01(rawP * n - idx);
+          activateBeat(idx, rawP, localT);
+        }
       }
 
-      // Native fallback beat sync when ScrollTrigger is absent (e.g. offline/mobile)
-      if ((typeof window.ScrollTrigger === "undefined" || (window.innerWidth || 1024) < 768) && activeBeats.length > 1) {
-        let bestBeat = 0;
-        activeBeats.forEach((b, idx) => {
-          if (typeof b.getBoundingClientRect === "function") {
-            const r = b.getBoundingClientRect();
-            if (r.top <= (window.innerHeight || 800) * 0.55) bestBeat = idx;
-          }
-        });
-        activateBeat(bestBeat, bestBeat / Math.max(1, activeBeats.length - 1), 1);
+      // Update floating section pill dot + internal scaleX bar, and tuck while stage occupies viewport
+      const pill = document.getElementById("apple-section-pill");
+      if (pill && !pill.hidden) {
+        pill.classList.toggle("is-stage-tucked", Boolean(inPinnedViewport));
+        if (activeSections.length) {
+          let bestIdx = 0;
+          let bestFill = 0;
+          activeSections.forEach((secEl, idx) => {
+            if (typeof secEl.getBoundingClientRect !== "function") return;
+            const r = secEl.getBoundingClientRect();
+            if (r.top <= viewMid) {
+              bestIdx = idx;
+              const totalH = Math.max(1, r.height);
+              bestFill = Math.max(0.08, Math.min(1, (viewMid - r.top) / totalH));
+            }
+          });
+          activeSections.forEach((secEl, idx) => {
+            const dot = pill.querySelector(`[data-pill-sec="${secEl.id}"]`);
+            if (!dot) return;
+            const isCur = idx === bestIdx;
+            dot.classList.toggle("is-current", isCur);
+            const fill = dot.querySelector(".pill-fill");
+            if (fill) {
+              fill.style.transform = `scaleX(${isCur ? bestFill : idx < bestIdx ? 1 : 0})`;
+            }
+          });
+        }
       }
     }
 
     activeScrollListener = updateOnScroll;
+    activeResizeListener = updateOnScroll;
     window.addEventListener("scroll", activeScrollListener, { passive: true });
+    window.addEventListener("resize", activeResizeListener, { passive: true });
     updateOnScroll();
   }
 
@@ -6716,49 +7210,69 @@ ${syllabusLines}
             : ""
         }
 
-        <!-- Zone 2: Signature Sticky Pinned Story Stage (apple-scrollytelling) -->
+        <!-- Zone 2: Apple Single-Viewport Sticky Runway Stage (Zero Jump Buttons) -->
         ${
           stage.beats && stage.beats.length
             ? `
-          <section id="pinned-stage-ch${ch.chapter}" tabindex="-1" class="apple-theater-stage" aria-label="${esc(ch.code)} 인터랙티브 스크롤 스토리 스테이지">
-            <div class="theater-header">
-              <div>
-                <span class="theater-kicker">${esc(stage.kicker)}</span>
-                <h2>${esc(stage.title)}</h2>
-                <p class="theater-sub">${esc(stage.subtitle)}</p>
-              </div>
-              <div class="theater-hud">
-                <span id="stage-beat-lbl-${ch.chapter}">BEAT 01 / 0${stage.beats.length}</span>
-                <span id="stage-pct-${ch.chapter}">0%</span>
-                <div class="theater-dot-nav">
-                  ${stage.beats
-                    .map(
-                      (b, idx) =>
-                        `<button type="button" class="theater-dot-btn ${idx === 0 ? "is-active" : ""}" data-stage-dot="${idx}" aria-label="스토리 비트 ${esc(b.step)}">${esc(b.step)}</button>`
-                    )
-                    .join("")}
+          <section
+            id="pinned-stage-ch${ch.chapter}"
+            tabindex="-1"
+            class="theater-runway"
+            style="--beat-count: ${stage.beats.length}"
+            aria-label="${esc(ch.code)} 인터랙티브 스크롤 스토리 스테이지"
+          >
+            <div class="apple-theater-stage theater-sticky-viewport" data-theater-sticky>
+              <div class="theater-topbar">
+                <div class="theater-title-wrap">
+                  <span class="theater-kicker">${esc(stage.kicker)}</span>
+                  <h2>${esc(stage.title)}</h2>
+                  <p class="theater-sub">${esc(stage.subtitle)}</p>
+                </div>
+                <div class="theater-progress-meta" aria-live="polite">
+                  <span class="theater-step-count" id="stage-beat-lbl-${ch.chapter}">01 / 0${stage.beats.length}</span>
+                  <div class="theater-progress-rail" aria-hidden="true">
+                    ${stage.beats
+                      .map(
+                        (_b, idx) =>
+                          `<span class="theater-seg"><span class="theater-seg-fill" data-stage-seg="${idx}" style="transform:scaleX(${
+                            idx === 0 ? 0.25 : 0
+                          })"></span></span>`
+                      )
+                      .join("")}
+                  </div>
                 </div>
               </div>
-            </div>
-            <div class="theater-sticky-grid">
-              <div class="theater-visual-sticky">
-                <div id="stage-svg-host-${ch.chapter}"></div>
-              </div>
-              <div class="theater-beats-track">
-                ${stage.beats
-                  .map(
-                    (b, idx) => `
-                  <button type="button" class="story-beat-card ${idx === 0 ? "is-active" : ""}" data-story-beat="${idx}">
-                    <div class="story-beat-top">
-                      <span class="story-beat-badge">${esc(b.badge)}</span>
-                      <span class="story-beat-metric">${esc(b.metricLabel)}: ${esc(b.metricValue)}</span>
-                    </div>
-                    <h3>${esc(b.step)}. ${esc(b.title)}</h3>
-                    <p>${esc(b.desc)}</p>
-                  </button>
-                `
-                  )
-                  .join("")}
+
+              <div class="theater-stage-body">
+                <div class="theater-visual-frame">
+                  <div id="stage-svg-host-${ch.chapter}" class="theater-svg-mount"></div>
+                </div>
+                <div class="theater-spec-column">
+                  <div class="theater-spec-deck" role="region" aria-label="도식 연동 핵심 해설" tabindex="0">
+                    ${stage.beats
+                      .map(
+                        (b, idx) => `
+                      <article
+                        class="story-beat-slide ${idx === 0 ? "is-active" : ""}"
+                        data-story-beat="${idx}"
+                        aria-hidden="${idx === 0 ? "false" : "true"}"
+                      >
+                        <div class="story-beat-top">
+                          <span class="story-beat-badge">${esc(b.badge)}</span>
+                          <div class="story-spec-callout">
+                            <span class="story-spec-label">${esc(b.metricLabel)}</span>
+                            <strong class="story-spec-value">${esc(b.metricValue)}</strong>
+                          </div>
+                        </div>
+                        <h3>${esc(b.step)}. ${esc(b.title)}</h3>
+                        <p>${esc(b.desc)}</p>
+                      </article>
+                    `
+                      )
+                      .join("")}
+                  </div>
+                  <div class="theater-sync-hint" aria-hidden="true">스크롤하거나 도식 구역을 탭하면 설명과 도식이 한 화면에서 함께 바뀝니다</div>
+                </div>
               </div>
             </div>
           </section>

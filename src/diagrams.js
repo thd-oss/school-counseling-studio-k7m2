@@ -86,17 +86,63 @@
     bindSegmentedControls(rootEl, selector, initialId, onChange) {
       const btns = Array.from(rootEl.querySelectorAll(selector));
       if (!btns.length) return;
-      function select(id) {
-        btns.forEach((b) => {
+      const ctrlBar = btns[0].closest(".viz-ctrl-bar");
+      let activeIdx = 0;
+
+      function select(id, fromSwipe = false) {
+        btns.forEach((b, i) => {
           const active = b.dataset.chip === id;
+          if (active) activeIdx = i;
           b.classList.toggle("is-active", active);
           b.setAttribute("aria-pressed", active ? "true" : "false");
+          if (active && fromSwipe && ctrlBar && typeof ctrlBar.scrollTo === "function") {
+            const targetLeft = Math.max(0, b.offsetLeft - ctrlBar.clientWidth / 2 + b.offsetWidth / 2);
+            try {
+              ctrlBar.scrollTo({ left: targetLeft, behavior: "smooth" });
+            } catch (_e) {
+              ctrlBar.scrollLeft = targetLeft;
+            }
+          }
         });
         onChange(id);
       }
-      btns.forEach((b) => b.addEventListener("click", () => select(b.dataset.chip)));
-      select(initialId);
-      return select;
+
+      btns.forEach((b) => b.addEventListener("click", () => select(b.dataset.chip, false)));
+
+      // Enable intuitive horizontal swipe directly on the SVG diagram stage (no jump buttons needed)
+      const stageFrame = rootEl.querySelector(".viz-stage-frame");
+      if (stageFrame && !stageFrame.dataset.swipeBound && btns.length > 1) {
+        stageFrame.dataset.swipeBound = "1";
+        let startX = 0;
+        let startY = 0;
+        stageFrame.addEventListener(
+          "touchstart",
+          (e) => {
+            if (!e.touches || e.touches.length !== 1) return;
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+          },
+          { passive: true }
+        );
+        stageFrame.addEventListener(
+          "touchend",
+          (e) => {
+            if (!e.changedTouches || !e.changedTouches.length) return;
+            const dx = e.changedTouches[0].clientX - startX;
+            const dy = e.changedTouches[0].clientY - startY;
+            if (Math.abs(dx) > 42 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+              const nextIdx = dx < 0 ? Math.min(btns.length - 1, activeIdx + 1) : Math.max(0, activeIdx - 1);
+              if (nextIdx !== activeIdx && btns[nextIdx]) {
+                select(btns[nextIdx].dataset.chip, true);
+              }
+            }
+          },
+          { passive: true }
+        );
+      }
+
+      select(initialId, false);
+      return (id) => select(id, false);
     },
     bindSvgNodes(svgHost, selector, onSelect) {
       const nodes = Array.from(svgHost.querySelectorAll(selector));
@@ -120,7 +166,7 @@
   function mountCh1PinnedSvg(container) {
     const uid = nextUid();
     container.innerHTML = `
-      <svg viewBox="${VIZ_CONST.VIEWBOX_STAGE}" class="theater-svg viz-svg" role="img" aria-label="제01장 스위스 치즈 3중 안전망과 훈육-상담 분리 방화벽 도식">
+      <svg viewBox="${VIZ_CONST.VIEWBOX_STAGE}" preserveAspectRatio="xMidYMid meet" class="theater-svg viz-svg" role="img" aria-label="제01장 스위스 치즈 3중 안전망과 훈육-상담 분리 방화벽 도식">
         ${SvgKit.defs(uid)}
         <rect x="14" y="14" width="532" height="392" rx="18" fill="var(--viz-canvas)" stroke="var(--viz-keyline)" stroke-width="1"/>
 
@@ -133,7 +179,7 @@
         <text x="64" y="210" text-anchor="middle" fill="var(--viz-ink-sub)" font-size="9.5">발달 신호</text>
 
         <!-- Layer 0: Tier 1 Slice -->
-        <g data-ch1-layer="0" style="transition:opacity 240ms ease,transform 260ms ease">
+        <g data-ch1-layer="0" data-stage-region="0" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="1단계 Tier 1 보편 예방 보기" style="transition:opacity 240ms ease,transform 260ms ease">
           <polygon points="122,92 204,76 204,284 122,300" fill="var(--viz-primary-soft)" stroke="var(--viz-primary)" stroke-width="2.2"/>
           <ellipse cx="163" cy="188" rx="18" ry="22" fill="var(--viz-canvas)" stroke="var(--viz-primary)" stroke-width="1.5" stroke-dasharray="4 3"/>
           <text x="163" y="185" text-anchor="middle" fill="var(--viz-primary)" font-size="9" font-weight="700">개별욕구</text>
@@ -147,7 +193,7 @@
         <path id="${uid}-p12" d="M 181 188 L 246 188" fill="none" stroke="var(--viz-warn)" stroke-width="2.2" pathLength="1" stroke-dasharray="1" stroke-dashoffset="0"/>
 
         <!-- Layer 1: Tier 2 Slice -->
-        <g data-ch1-layer="1" style="transition:opacity 240ms ease,transform 260ms ease">
+        <g data-ch1-layer="1" data-stage-region="1" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="2단계 Tier 2 조기개입 보기" style="transition:opacity 240ms ease,transform 260ms ease">
           <polygon points="248,92 332,76 332,284 248,300" fill="var(--viz-depth-soft)" stroke="var(--viz-depth)" stroke-width="2.2"/>
           <ellipse cx="290" cy="148" rx="16" ry="18" fill="var(--viz-canvas)" stroke="var(--viz-depth)" stroke-width="1.5" stroke-dasharray="4 3"/>
           <ellipse cx="290" cy="236" rx="17" ry="20" fill="var(--viz-canvas)" stroke="var(--viz-depth)" stroke-width="1.5" stroke-dasharray="4 3"/>
@@ -161,7 +207,7 @@
         <path id="${uid}-p23" d="M 307 236 L 374 236" fill="none" stroke="var(--viz-critical)" stroke-width="2.2" pathLength="1" stroke-dasharray="1" stroke-dashoffset="0"/>
 
         <!-- Layer 2: Tier 3 Slice -->
-        <g data-ch1-layer="2" style="transition:opacity 240ms ease,transform 260ms ease">
+        <g data-ch1-layer="2" data-stage-region="2" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="3단계 Tier 3 심층 연계 보기" style="transition:opacity 240ms ease,transform 260ms ease">
           <polygon points="376,92 462,76 462,284 376,300" fill="var(--viz-warn-soft)" stroke="var(--viz-warn)" stroke-width="2.2"/>
           <ellipse cx="419" cy="176" rx="16" ry="18" fill="var(--viz-canvas)" stroke="var(--viz-warn)" stroke-width="1.5" stroke-dasharray="4 3"/>
           <rect x="387" y="222" width="64" height="28" rx="9" fill="var(--viz-warn)"/>
@@ -177,7 +223,7 @@
         <text x="505" y="218" text-anchor="middle" fill="var(--viz-ink-sub)" font-size="9.5">회복</text>
 
         <!-- Layer 3: Firewall Dock Shutter (Bottom HUD) -->
-        <g data-ch1-layer="3" style="transition:opacity 260ms ease">
+        <g data-ch1-layer="3" data-stage-region="3" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="4단계 훈육-상담 분리 방화벽 보기" style="transition:opacity 260ms ease">
           <rect x="28" y="316" width="214" height="72" rx="12" fill="var(--viz-critical-soft)" stroke="var(--viz-critical)" stroke-width="1.8" stroke-dasharray="5 3"/>
           <text x="135" y="342" text-anchor="middle" fill="var(--viz-critical)" font-size="11.5" font-weight="800">✕ 생활안전부 · 선도위</text>
           <text x="135" y="362" text-anchor="middle" fill="var(--viz-ink-sub)" font-size="10">사안 조사 · 징계 처분 전담</text>
@@ -257,7 +303,7 @@
     }
 
     container.innerHTML = `
-      <svg viewBox="${VIZ_CONST.VIEWBOX_STAGE}" class="theater-svg viz-svg" role="img" aria-label="제02장 만 6세에서 18세까지 변연계와 전두엽 성숙 및 6대 발달이론 동기화 그래프">
+      <svg viewBox="${VIZ_CONST.VIEWBOX_STAGE}" preserveAspectRatio="xMidYMid meet" class="theater-svg viz-svg" role="img" aria-label="제02장 만 6세에서 18세까지 변연계와 전두엽 성숙 및 6대 발달이론 동기화 그래프">
         <rect x="24" y="24" width="512" height="290" rx="16" fill="var(--viz-canvas)" stroke="var(--viz-keyline)"/>
         <line x1="60" y1="96" x2="500" y2="96" stroke="var(--viz-grid)"/>
         <line x1="60" y1="168" x2="500" y2="168" stroke="var(--viz-grid)"/>
@@ -282,8 +328,14 @@
           <text x="470" y="294">16~18세 (고등)</text>
         </g>
 
+        <!-- Interactive Developmental Stage Hotspots -->
+        <rect x="40" y="34" width="124" height="270" rx="8" fill="transparent" data-stage-region="0" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="1단계 만 6~8세 초저 발달 보기"/>
+        <rect x="164" y="34" width="118" height="270" rx="8" fill="transparent" data-stage-region="1" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="2단계 만 9~12세 초고 발달 보기"/>
+        <rect x="282" y="34" width="126" height="270" rx="8" fill="transparent" data-stage-region="2" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="3단계 만 13~15세 중등 발달 보기"/>
+        <rect x="408" y="34" width="120" height="270" rx="8" fill="transparent" data-stage-region="3" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="4단계 만 16~18세 고등 발달 보기"/>
+
         <!-- Continuous Scrub Scanner + Live Tracking Dots -->
-        <g id="${uid}-scanner">
+        <g id="${uid}-scanner" pointer-events="none">
           <line id="${uid}-scan-line" x1="105" y1="44" x2="105" y2="275" stroke="var(--viz-safe)" stroke-width="2.4"/>
           <line id="${uid}-gap-ruler" x1="105" y1="200" x2="105" y2="250" stroke="var(--viz-critical)" stroke-width="3" stroke-dasharray="3 2"/>
           <circle id="${uid}-dot-lim" cx="105" cy="215" r="5.5" fill="var(--viz-warn)" stroke="#ffffff" stroke-width="1.5"/>
@@ -350,12 +402,12 @@
   function mountCh3PinnedSvg(container) {
     const uid = nextUid();
     container.innerHTML = `
-      <svg viewBox="${VIZ_CONST.VIEWBOX_STAGE}" class="theater-svg viz-svg" role="img" aria-label="제03장 윤리 형량 저울 및 고위기 법적 신고 결정 회로">
+      <svg viewBox="${VIZ_CONST.VIEWBOX_STAGE}" preserveAspectRatio="xMidYMid meet" class="theater-svg viz-svg" role="img" aria-label="제03장 윤리 형량 저울 및 고위기 법적 신고 결정 회로">
         ${SvgKit.defs(uid)}
         <rect x="14" y="14" width="532" height="392" rx="18" fill="var(--viz-canvas)" stroke="var(--viz-keyline)" stroke-width="1"/>
 
         <!-- Gate 1: Dual Consent -->
-        <g data-c3="0" style="transition:opacity 240ms ease">
+        <g data-c3="0" data-stage-region="0" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="1단계 학생 승낙과 보호자 동의 보기" style="transition:opacity 240ms ease">
           <rect x="52" y="28" width="200" height="54" rx="12" fill="var(--viz-primary-soft)" stroke="var(--viz-primary)" stroke-width="1.8"/>
           <text x="152" y="51" text-anchor="middle" fill="var(--viz-ink)" font-size="12" font-weight="800">학생 승낙 (Assent)</text>
           <text x="152" y="69" text-anchor="middle" fill="var(--viz-primary)" font-size="10">비밀보장 한계 발달 맞춤 고지</text>
@@ -367,7 +419,7 @@
         </g>
 
         <!-- Gate 2: Kitchener Balance Scale -->
-        <g data-c3="1" style="transition:opacity 240ms ease">
+        <g data-c3="1" data-stage-region="1" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="2단계 키치너 윤리 형량 저울 보기" style="transition:opacity 240ms ease">
           <polygon points="280,122 268,158 292,158" fill="var(--viz-keyline)"/>
           <g id="${uid}-beam" style="transform-origin:280px 132px;transition:transform 260ms cubic-bezier(0.23,1,0.32,1)">
             <line x1="128" y1="132" x2="432" y2="132" stroke="var(--viz-ink)" stroke-width="3"/>
@@ -382,7 +434,7 @@
         </g>
 
         <!-- Gate 3: 3 Legal Immediate Circuits (Draw on Beat 2) -->
-        <g data-c3="2" style="transition:opacity 240ms ease">
+        <g data-c3="2" data-stage-region="2" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="3단계 고위기 예외와 즉시 법적 신고 보기" style="transition:opacity 240ms ease">
           <path id="${uid}-circ-l" d="M 435 190 L 435 214 L 106 238" fill="none" stroke="var(--viz-critical)" stroke-width="2.2" pathLength="1" stroke-dasharray="1" stroke-dashoffset="0"/>
           <path id="${uid}-circ-m" d="M 435 190 L 435 214 L 280 238" fill="none" stroke="var(--viz-warn)" stroke-width="2.2" pathLength="1" stroke-dasharray="1" stroke-dashoffset="0"/>
           <path id="${uid}-circ-r" d="M 435 190 L 435 214 L 454 238" fill="none" stroke="var(--viz-critical)" stroke-width="2.2" pathLength="1" stroke-dasharray="1" stroke-dashoffset="0"/>
@@ -404,7 +456,7 @@
         </g>
 
         <!-- Gate 4: Vault & Self-Care -->
-        <g data-c3="3" style="transition:opacity 240ms ease">
+        <g data-c3="3" data-stage-region="3" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="4단계 기록 분리보관과 상담자 자기돌봄 보기" style="transition:opacity 240ms ease">
           <rect x="44" y="330" width="472" height="60" rx="14" fill="var(--viz-safe-soft)" stroke="var(--viz-safe)" stroke-width="1.8"/>
           <text x="280" y="354" text-anchor="middle" fill="var(--viz-safe)" font-size="12" font-weight="800">✓ 단독소유기록 이중잠금 분리 + 최소 정보 공유</text>
           <text x="280" y="375" text-anchor="middle" fill="var(--viz-ink)" font-size="10.5">소진 · 공감피로(STS) · 대리외상(VT) 조기 변별 &amp; 동료 수퍼비전</text>
@@ -438,12 +490,12 @@
   function mountCh4PinnedSvg(container) {
     const uid = nextUid();
     container.innerHTML = `
-      <svg viewBox="${VIZ_CONST.VIEWBOX_STAGE}" class="theater-svg viz-svg" role="img" aria-label="제04장 45분 단회학생상담 크로노미터와 167시간 일상 전이 아크">
+      <svg viewBox="${VIZ_CONST.VIEWBOX_STAGE}" preserveAspectRatio="xMidYMid meet" class="theater-svg viz-svg" role="img" aria-label="제04장 45분 단회학생상담 크로노미터와 167시간 일상 전이 아크">
         ${SvgKit.defs(uid)}
         <rect x="14" y="14" width="532" height="392" rx="18" fill="var(--viz-canvas)" stroke="var(--viz-keyline)" stroke-width="1"/>
 
         <!-- Outer 167h orbit -->
-        <g data-c4="2" style="transition:opacity 280ms ease">
+        <g data-c4="2" data-stage-region="2" class="theater-svg-hotspot" style="transition:opacity 280ms ease">
           <circle cx="220" cy="212" r="154" fill="none" stroke="var(--viz-safe)" stroke-width="1.8" stroke-dasharray="7 5" opacity="0.55"/>
           <text x="278" y="42" text-anchor="middle" fill="var(--viz-safe)" font-size="11.5" font-weight="800">주 1시간 상담실 → 교실·가정 167시간 행동 실험 전이</text>
         </g>
@@ -453,25 +505,25 @@
         <circle id="${uid}-prog-ring" cx="220" cy="212" r="126" fill="none" stroke="var(--viz-primary)" stroke-width="3.5" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" transform="rotate(-90 220 212)" stroke-linecap="round"/>
 
         <!-- 4 Quadrant Arcs -->
-        <g data-c4="0" style="transition:opacity 240ms ease">
+        <g data-c4="0" data-stage-region="0" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="1단계 초기 접수와 MMSE 보기" style="transition:opacity 240ms ease">
           <path d="M 220 212 L 220 94 A 118 118 0 0 1 338 212 Z" fill="var(--viz-primary-soft)" stroke="var(--viz-primary)" stroke-width="2"/>
           <text x="272" y="158" text-anchor="middle" fill="var(--viz-ink)" font-size="11" font-weight="800">1. 접수·MMSE</text>
           <text x="272" y="174" text-anchor="middle" fill="var(--viz-primary)" font-size="10">5~8분 · 동맹</text>
         </g>
 
-        <g data-c4="1" style="transition:opacity 240ms ease">
+        <g data-c4="1" data-stage-region="1" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="2단계 미시상담기술 보기" style="transition:opacity 240ms ease">
           <path d="M 220 212 L 338 212 A 118 118 0 0 1 220 330 Z" fill="var(--viz-depth-soft)" stroke="var(--viz-depth)" stroke-width="2"/>
           <text x="272" y="264" text-anchor="middle" fill="var(--viz-ink)" font-size="11" font-weight="800">2. 미시기술</text>
           <text x="272" y="280" text-anchor="middle" fill="var(--viz-depth)" font-size="10">SOLER·반영·직면</text>
         </g>
 
-        <g data-c4="2" style="transition:opacity 240ms ease">
+        <g data-c4="2" data-stage-region="2" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="3단계 통합 전략과 167시간 전이 보기" style="transition:opacity 240ms ease">
           <path d="M 220 212 L 220 330 A 118 118 0 0 1 102 212 Z" fill="var(--viz-safe-soft)" stroke="var(--viz-safe)" stroke-width="2"/>
           <text x="168" y="264" text-anchor="middle" fill="var(--viz-ink)" font-size="11" font-weight="800">3. 예외·통합</text>
           <text x="168" y="280" text-anchor="middle" fill="var(--viz-safe)" font-size="10">WDEP·행동실험</text>
         </g>
 
-        <g data-c4="3" style="transition:opacity 240ms ease">
+        <g data-c4="3" data-stage-region="3" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="4단계 실행 리허설과 열린 종결 보기" style="transition:opacity 240ms ease">
           <path d="M 220 212 L 102 212 A 118 118 0 0 1 220 94 Z" fill="var(--viz-warn-soft)" stroke="var(--viz-warn)" stroke-width="2"/>
           <text x="168" y="158" text-anchor="middle" fill="var(--viz-ink)" font-size="11" font-weight="800">4. 실행 리허설</text>
           <text x="168" y="174" text-anchor="middle" fill="var(--viz-warn)" font-size="10">5~7분 · DAP·추수</text>
@@ -546,7 +598,7 @@
       "통합 렌즈: 당위·독심술 검증 · 앞바퀴 조향 · 강점 점화",
     ];
     container.innerHTML = `
-      <svg viewBox="${VIZ_CONST.VIEWBOX_STAGE}" class="theater-svg viz-svg" role="img" aria-label="제05장 공통 사례를 9대 상담이론으로 분광하는 광학 프리즘 맵">
+      <svg viewBox="${VIZ_CONST.VIEWBOX_STAGE}" preserveAspectRatio="xMidYMid meet" class="theater-svg viz-svg" role="img" aria-label="제05장 공통 사례를 9대 상담이론으로 분광하는 광학 프리즘 맵">
         ${SvgKit.defs(uid)}
         <rect x="14" y="14" width="532" height="392" rx="18" fill="var(--viz-canvas)" stroke="var(--viz-keyline)" stroke-width="1"/>
 
@@ -565,7 +617,7 @@
         ${nodes
           .map(
             (n, i) => `
-          <g data-cluster="${n.cluster}" style="transition:opacity 240ms ease">
+          <g data-cluster="${n.cluster}" data-stage-region="${n.cluster}" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="${esc(n.label)} 렌즈 보기" style="transition:opacity 240ms ease">
             <path class="${uid}-ray" data-ray-cluster="${n.cluster}" d="M 294 204 Q 332 ${lerp(204, n.y, 0.45).toFixed(0)} 348 ${n.y}" fill="none" stroke="${n.color}" stroke-width="2.2" pathLength="1" stroke-dasharray="1" stroke-dashoffset="0"/>
             <rect x="350" y="${n.y - 21}" width="176" height="42" rx="11" fill="var(--viz-surface)" stroke="${n.color}" stroke-width="1.8"/>
             <text x="438" y="${n.y - 2}" text-anchor="middle" fill="var(--viz-ink)" font-size="10.8" font-weight="800">${esc(n.label)}</text>
@@ -614,17 +666,19 @@
       [1, 2], [1, 3], [2, 4], [3, 5], [4, 6], [5, 6], [1, 5], [2, 6], [3, 4],
     ];
     container.innerHTML = `
-      <svg viewBox="${VIZ_CONST.VIEWBOX_STAGE}" class="theater-svg viz-svg" role="img" aria-label="제06장 집단상담 소시오그램 발달단계 및 학급단위 확산 도식">
+      <svg viewBox="${VIZ_CONST.VIEWBOX_STAGE}" preserveAspectRatio="xMidYMid meet" class="theater-svg viz-svg" role="img" aria-label="제06장 집단상담 소시오그램 발달단계 및 학급단위 확산 도식">
         <rect x="14" y="14" width="532" height="392" rx="18" fill="var(--viz-canvas)" stroke="var(--viz-keyline)" stroke-width="1"/>
 
         <!-- Tier 1 Classroom Diffusion (Beat 3) -->
-        <g data-c6="3" style="transition:opacity 280ms ease">
+        <g data-c6="3" data-stage-region="3" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="4단계 학급단위 Tier 1 확산 보기" style="transition:opacity 280ms ease">
           <ellipse id="${uid}-tier1-ring" cx="280" cy="216" rx="236" ry="170" fill="var(--viz-safe-soft)" stroke="var(--viz-safe)" stroke-width="2" stroke-dasharray="6 4"/>
+          <rect x="64" y="376" width="432" height="28" rx="10" fill="transparent"/>
           <text x="280" y="396" text-anchor="middle" fill="var(--viz-safe)" font-size="11.5" font-weight="800">TIER 1 확산 · 민주적 학급회의 &amp; 아들러식 격려 (직무의 15~25%)</text>
         </g>
 
         <!-- Stage 1: Radial Spokes to Leader (Beat 0) -->
-        <g data-c6="0" style="transition:opacity 240ms ease">
+        <g data-c6="0" data-stage-region="0" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="1단계 초기단계 방사형 의존 보기" style="transition:opacity 240ms ease">
+          <rect x="44" y="28" width="472" height="30" rx="10" fill="transparent"/>
           ${students
             .map(
               (m) =>
@@ -635,7 +689,7 @@
         </g>
 
         <!-- Stage 2: Transition Conflict & Blocking Shield (Beat 1) -->
-        <g data-c6="1" style="transition:opacity 240ms ease">
+        <g data-c6="1" data-stage-region="1" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="2단계 과도기 차단하기 개입 보기" style="transition:opacity 240ms ease">
           <line x1="175" y1="156" x2="385" y2="156" stroke="var(--viz-critical)" stroke-width="2.6" stroke-dasharray="5 3"/>
           <g id="${uid}-shield" style="transition:transform 260ms cubic-bezier(0.23,1,0.32,1)">
             <path d="M 280 124 L 280 232" stroke="var(--viz-primary)" stroke-width="3.6" stroke-linecap="round"/>
@@ -646,7 +700,8 @@
         </g>
 
         <!-- Stage 3: Horizontal Linking Mesh (Beat 2) -->
-        <g data-c6="2" style="transition:opacity 240ms ease">
+        <g data-c6="2" data-stage-region="2" class="theater-svg-hotspot" tabindex="0" role="button" aria-label="3단계 작업단계 수평 연결짓기 보기" style="transition:opacity 240ms ease">
+          <circle cx="280" cy="230" r="88" fill="transparent"/>
           ${peerLinks
             .map(
               ([a, b]) =>

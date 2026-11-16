@@ -543,49 +543,69 @@
             : ""
         }
 
-        <!-- Zone 2: Signature Sticky Pinned Story Stage (apple-scrollytelling) -->
+        <!-- Zone 2: Apple Single-Viewport Sticky Runway Stage (Zero Jump Buttons) -->
         ${
           stage.beats && stage.beats.length
             ? `
-          <section id="pinned-stage-ch${ch.chapter}" tabindex="-1" class="apple-theater-stage" aria-label="${esc(ch.code)} 인터랙티브 스크롤 스토리 스테이지">
-            <div class="theater-header">
-              <div>
-                <span class="theater-kicker">${esc(stage.kicker)}</span>
-                <h2>${esc(stage.title)}</h2>
-                <p class="theater-sub">${esc(stage.subtitle)}</p>
-              </div>
-              <div class="theater-hud">
-                <span id="stage-beat-lbl-${ch.chapter}">BEAT 01 / 0${stage.beats.length}</span>
-                <span id="stage-pct-${ch.chapter}">0%</span>
-                <div class="theater-dot-nav">
-                  ${stage.beats
-                    .map(
-                      (b, idx) =>
-                        `<button type="button" class="theater-dot-btn ${idx === 0 ? "is-active" : ""}" data-stage-dot="${idx}" aria-label="스토리 비트 ${esc(b.step)}">${esc(b.step)}</button>`
-                    )
-                    .join("")}
+          <section
+            id="pinned-stage-ch${ch.chapter}"
+            tabindex="-1"
+            class="theater-runway"
+            style="--beat-count: ${stage.beats.length}"
+            aria-label="${esc(ch.code)} 인터랙티브 스크롤 스토리 스테이지"
+          >
+            <div class="apple-theater-stage theater-sticky-viewport" data-theater-sticky>
+              <div class="theater-topbar">
+                <div class="theater-title-wrap">
+                  <span class="theater-kicker">${esc(stage.kicker)}</span>
+                  <h2>${esc(stage.title)}</h2>
+                  <p class="theater-sub">${esc(stage.subtitle)}</p>
+                </div>
+                <div class="theater-progress-meta" aria-live="polite">
+                  <span class="theater-step-count" id="stage-beat-lbl-${ch.chapter}">01 / 0${stage.beats.length}</span>
+                  <div class="theater-progress-rail" aria-hidden="true">
+                    ${stage.beats
+                      .map(
+                        (_b, idx) =>
+                          `<span class="theater-seg"><span class="theater-seg-fill" data-stage-seg="${idx}" style="transform:scaleX(${
+                            idx === 0 ? 0.25 : 0
+                          })"></span></span>`
+                      )
+                      .join("")}
+                  </div>
                 </div>
               </div>
-            </div>
-            <div class="theater-sticky-grid">
-              <div class="theater-visual-sticky">
-                <div id="stage-svg-host-${ch.chapter}"></div>
-              </div>
-              <div class="theater-beats-track">
-                ${stage.beats
-                  .map(
-                    (b, idx) => `
-                  <button type="button" class="story-beat-card ${idx === 0 ? "is-active" : ""}" data-story-beat="${idx}">
-                    <div class="story-beat-top">
-                      <span class="story-beat-badge">${esc(b.badge)}</span>
-                      <span class="story-beat-metric">${esc(b.metricLabel)}: ${esc(b.metricValue)}</span>
-                    </div>
-                    <h3>${esc(b.step)}. ${esc(b.title)}</h3>
-                    <p>${esc(b.desc)}</p>
-                  </button>
-                `
-                  )
-                  .join("")}
+
+              <div class="theater-stage-body">
+                <div class="theater-visual-frame">
+                  <div id="stage-svg-host-${ch.chapter}" class="theater-svg-mount"></div>
+                </div>
+                <div class="theater-spec-column">
+                  <div class="theater-spec-deck" role="region" aria-label="도식 연동 핵심 해설" tabindex="0">
+                    ${stage.beats
+                      .map(
+                        (b, idx) => `
+                      <article
+                        class="story-beat-slide ${idx === 0 ? "is-active" : ""}"
+                        data-story-beat="${idx}"
+                        aria-hidden="${idx === 0 ? "false" : "true"}"
+                      >
+                        <div class="story-beat-top">
+                          <span class="story-beat-badge">${esc(b.badge)}</span>
+                          <div class="story-spec-callout">
+                            <span class="story-spec-label">${esc(b.metricLabel)}</span>
+                            <strong class="story-spec-value">${esc(b.metricValue)}</strong>
+                          </div>
+                        </div>
+                        <h3>${esc(b.step)}. ${esc(b.title)}</h3>
+                        <p>${esc(b.desc)}</p>
+                      </article>
+                    `
+                      )
+                      .join("")}
+                  </div>
+                  <div class="theater-sync-hint" aria-hidden="true">스크롤하거나 도식 구역을 탭하면 설명과 도식이 한 화면에서 함께 바뀝니다</div>
+                </div>
               </div>
             </div>
           </section>
