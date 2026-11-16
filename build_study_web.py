@@ -42,7 +42,7 @@ def main():
   </style>
 </head>
 <body>
-  <svg width="0" height="0" style="position:absolute;pointer-events:none" aria-hidden="true">
+  <svg width="0" height="0" style="position:absolute;left:0;top:0;overflow:hidden;pointer-events:none" aria-hidden="true">
     <defs>
       <filter id="liquid-bevel-lens" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">
         <feImage id="sdf-bevel-feimage" href="" result="bevelMap" preserveAspectRatio="none" />
