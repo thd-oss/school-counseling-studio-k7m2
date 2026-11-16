@@ -1207,25 +1207,17 @@ details.deep-drawer[open] > summary::after {
   padding-block-start: 1rem;
   border-block-start: 1px dashed var(--border-strong);
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
+  justify-content: flex-end;
 }
-.sec-footer-meta {
-  font-size: 0.84rem;
-  color: var(--text-muted);
-  font-weight: 600;
-  min-inline-size: 0;
+.sec-footer .complete-btn {
+  min-block-size: 2.5rem;
+  padding-inline: 1.15rem;
+  font-weight: 700;
 }
-.sec-footer-meta.is-done {
-  color: var(--success);
-}
-.sec-footer-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
+@media (pointer: coarse) {
+  .sec-footer .complete-btn {
+    min-block-size: 2.75rem;
+  }
 }
 
 .flow-gate-card {
@@ -1582,10 +1574,8 @@ dialog.study-dialog::backdrop {
   .flow-gate-card {
     padding: 1.25rem 1.125rem;
   }
-  .sec-footer-actions {
+  .sec-footer .complete-btn {
     inline-size: 100%;
-  }
-  .sec-footer-actions .btn {
-    flex: 1 1 auto;
+    justify-content: center;
   }
 }

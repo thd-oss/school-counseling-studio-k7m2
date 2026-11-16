@@ -522,10 +522,9 @@
           <section id="diag-anchor-${ch.chapter}" tabindex="-1" class="diag-mount"></section>
 
           ${ch.coreSections
-            .map((sec, idx) => {
+            .map((sec) => {
               const isDone = Boolean(state.readSections[sec.id]);
               const cur = sec.curated || {};
-              const nextSec = ch.coreSections[idx + 1] || null;
               return `
               <article class="sec-article" id="${esc(sec.id)}" tabindex="-1">
                 <div class="sec-top">
@@ -576,19 +575,12 @@
                   </div>
                 </details>
                 <footer class="sec-footer">
-                  <div class="sec-footer-meta ${isDone ? "is-done" : ""}" data-sec-foot-msg="${esc(sec.id)}">
-                    ${isDone ? `✓ ${esc(sec.secNo)}절 학습 완료로 체크되었습니다.` : "이 절의 요약과 원문을 끝까지 읽었다면 아래 버튼으로 학습 완료를 체크하세요."}
-                  </div>
-                  <div class="sec-footer-actions">
-                    <button type="button" class="btn complete-btn ${isDone ? "is-done" : ""}" data-toggle-read="${esc(sec.id)}">
-                      ${isDone ? "✓ 학습 완료됨" : "○ 이 절 학습 완료 체크"}
-                    </button>
-                    ${
-                      nextSec
-                        ? `<button type="button" class="btn btn-primary" data-complete-and-next="${esc(sec.id)}" data-next-sec="${esc(nextSec.id)}">완료 체크 후 ${esc(nextSec.secNo)}절로 이동 ↓</button>`
-                        : `<button type="button" class="btn btn-primary" data-complete-and-quiz="${esc(sec.id)}">✓ 완료 체크 후 제0${ch.chapter}장 객관식 풀기 →</button>`
-                    }
-                  </div>
+                  <button
+                    type="button"
+                    class="btn complete-btn ${isDone ? "is-done" : ""}"
+                    data-toggle-read="${esc(sec.id)}"
+                    aria-pressed="${isDone ? "true" : "false"}"
+                  ><span aria-hidden="true">${isDone ? "✓" : "○"}</span> ${esc(sec.secNo)}절 학습 완료 체크</button>
                 </footer>
               </article>
             `;
@@ -648,17 +640,11 @@
         badge.classList.toggle("is-done", done);
         badge.textContent = done ? "✓ 학습 완료" : "학습 전";
       }
-      const footMsg = root.querySelector(`[data-sec-foot-msg="${secId}"]`);
-      if (footMsg) {
-        footMsg.classList.toggle("is-done", done);
-        footMsg.textContent = done
-          ? `✓ ${secNo}절 학습 완료로 체크되었습니다.`
-          : "이 절의 요약과 원문을 끝까지 읽었다면 아래 버튼으로 학습 완료를 체크하세요.";
-      }
       const toggleBtn = root.querySelector(`[data-toggle-read="${secId}"]`);
       if (toggleBtn) {
         toggleBtn.classList.toggle("is-done", done);
-        toggleBtn.textContent = done ? "✓ 학습 완료됨" : "○ 이 절 학습 완료 체크";
+        toggleBtn.setAttribute("aria-pressed", done ? "true" : "false");
+        toggleBtn.innerHTML = `<span aria-hidden="true">${done ? "✓" : "○"}</span> ${esc(secNo)}절 학습 완료 체크`;
       }
       const tocItem = root.querySelector(`[data-toc-for="${secId}"] .toc-check`);
       if (tocItem) tocItem.textContent = done ? "✓" : "";
@@ -675,28 +661,6 @@
         const secId = btn.dataset.toggleRead;
         const done = STORE.toggleSectionRead(secId);
         syncSectionUi(secId, done);
-      });
-    });
-
-    // Check completion and scroll smoothly to next section
-    root.querySelectorAll("[data-complete-and-next]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const secId = btn.dataset.completeAndNext;
-        const nextId = btn.dataset.nextSec;
-        const done = STORE.toggleSectionRead(secId, true);
-        syncSectionUi(secId, done);
-        const nextEl = nextId ? document.getElementById(nextId) : null;
-        if (nextEl) nextEl.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
-    });
-
-    // Check completion on last section and move to chapter MCQ
-    root.querySelectorAll("[data-complete-and-quiz]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const secId = btn.dataset.completeAndQuiz;
-        const done = STORE.toggleSectionRead(secId, true);
-        syncSectionUi(secId, done);
-        navigate({ view: "chapter", chapter: ch.chapter, mode: "mcq" });
       });
     });
 
