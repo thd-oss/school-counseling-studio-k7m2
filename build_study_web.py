@@ -24,6 +24,7 @@ def main():
     store_js = safe_inline_js((SRC_DIR / "store.js").read_text(encoding="utf-8"))
     parser_js = safe_inline_js((SRC_DIR / "gemini_parser.js").read_text(encoding="utf-8"))
     diagrams_js = safe_inline_js((SRC_DIR / "diagrams.js").read_text(encoding="utf-8"))
+    scrolly_js = safe_inline_js((SRC_DIR / "scrollytelling.js").read_text(encoding="utf-8"))
     app_js = safe_inline_js((SRC_DIR / "app.js").read_text(encoding="utf-8"))
     sample_txt = SAMPLE_TXT.read_text(encoding="utf-8")
     sample_js = safe_inline_js("window.__SAMPLE_GEMINI_TXT__ = " + json.dumps(sample_txt, ensure_ascii=False) + ";")
@@ -41,6 +42,14 @@ def main():
   </style>
 </head>
 <body>
+  <svg width="0" height="0" style="position:absolute;pointer-events:none" aria-hidden="true">
+    <defs>
+      <filter id="liquid-bevel-lens" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">
+        <feImage id="sdf-bevel-feimage" href="" result="bevelMap" preserveAspectRatio="none" />
+        <feDisplacementMap in="SourceGraphic" in2="bevelMap" scale="8" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+    </defs>
+  </svg>
   <div class="scroll-progress" aria-hidden="true"></div>
 
   <header class="global-header">
@@ -66,6 +75,7 @@ def main():
   <div class="chapter-subbar" id="chapter-subbar" hidden></div>
 
   <main class="main-shell" id="app-root"></main>
+  <div id="apple-section-pill" class="liquid-pill" hidden></div>
 
   <dialog class="study-dialog" id="gemini-dialog" aria-labelledby="gemini-dlg-title">
     <div class="dialog-head">
@@ -87,6 +97,9 @@ def main():
     <div class="dialog-body" id="progress-dialog-body"></div>
   </dialog>
 
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.20/dist/lenis.min.js"></script>
   <script>
 {bundle_js}
   </script>
@@ -101,6 +114,9 @@ def main():
   </script>
   <script>
 {diagrams_js}
+  </script>
+  <script>
+{scrolly_js}
   </script>
   <script>
 {app_js}

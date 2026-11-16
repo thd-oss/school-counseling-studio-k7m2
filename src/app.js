@@ -486,151 +486,318 @@
 
   function renderLearnMode(root, ch) {
     const state = STORE.getState();
+    const ms = ch.masterSummary || {};
+    const stage = ms.pinnedStage || {};
 
     root.innerHTML = `
-      <div class="learn-layout">
-        <aside class="toc-sidebar" aria-label="절 목차 탐색">
-          <div class="toc-header">
-            <span>${esc(ch.code)} 학습 목차</span>
-            <span id="toc-progress-count">${ch.coreSections.filter((s) => state.readSections[s.id]).length}/${ch.coreSections.length}절 완료</span>
-          </div>
-          <nav class="toc-nav" id="chapter-toc-nav">
-            <a href="#diag-anchor-${ch.chapter}"><span>◆ 인터랙티브 도식화</span><span></span></a>
-            ${ch.coreSections
-              .map(
-                (s) =>
-                  `<a href="#${esc(s.id)}" data-toc-for="${esc(s.id)}"><span>${esc(s.secNo)} ${esc(s.title)}</span><span class="toc-check">${
-                    state.readSections[s.id] ? "✓" : ""
-                  }</span></a>`
-              )
-              .join("")}
+      <div class="learn-mode-shell">
+        <!-- Zone 1: Chapter Apple Showcase Header + Master Chapter Summary -->
+        <header class="chapter-showcase-hero">
+          <span class="hero-eyebrow">${esc(ch.code)} · ${esc(ch.meta.tag)}</span>
+          <h1 aria-label="${esc(ch.fullTitle)}">
+            <span class="motion-line-mask"><span>${esc(ch.code)}</span></span>
+            <span class="motion-line-mask"><span>${esc(ch.title)}</span></span>
+          </h1>
+          <p class="chapter-showcase-lead">${esc(ch.meta.heroSummary)}</p>
+          <p class="chapter-showcase-goal"><strong>장 학습목표:</strong> ${esc(ch.goal || "")}</p>
+        </header>
+
+        ${
+          ms.thesis
+            ? `
+          <section id="master-summary-ch${ch.chapter}" tabindex="-1" class="master-summary-panel" aria-label="${esc(ch.code)} 장 마스터 요약">
+            <div class="master-summary-head">
+              <div>
+                <span class="sec-num">MASTER SYNTHESIS · 상권 핵심 재분석 요약</span>
+                <h2>${esc(ch.code)} 전체 구조 한눈에 꿰뚫기</h2>
+              </div>
+              <span class="concept-tag">${ch.coreSections.length}개 절 · ${ch.coreSections.reduce((a, s) => a + (s.subsections || []).length, 0)}개 소절 · ${ch.coreSections.reduce((a, s) => a + (s.tableCount || 0), 0)}개 표 통합</span>
+            </div>
+            <div class="master-thesis-box">${esc(ms.thesis)}</div>
+            <div class="pillar-grid">
+              ${(ms.keyPillars || [])
+                .map(
+                  (p) => `
+                <button type="button" class="pillar-card" data-jump-pillar-sec="${esc(p.secId)}">
+                  <span class="sec-num">SECTION ${esc(p.secNo)}</span>
+                  <h3>${esc(p.secNo)} ${esc(p.title)}</h3>
+                  <div class="pillar-focus">${esc(p.focus)}</div>
+                  <div class="pillar-must">★ ${esc(p.mustKnow)}</div>
+                </button>
+              `
+                )
+                .join("")}
+            </div>
             ${
-              ch.activitySection && ch.activitySection.activities && ch.activitySection.activities.length
-                ? `<a href="#activity-anchor-${ch.chapter}"><span>★ 수업활동 가이드</span><span></span></a>`
+              ms.examHighlights && ms.examHighlights.length
+                ? `
+              <div class="exam-highlight-strip">
+                <h4>임용·대학원 및 현장 실무 최빈출 변별 포인트</h4>
+                <ul>${ms.examHighlights.map((h) => `<li>${esc(h)}</li>`).join("")}</ul>
+              </div>
+            `
                 : ""
             }
-          </nav>
-        </aside>
+          </section>
+        `
+            : ""
+        }
 
-        <div class="learn-content">
-          <header class="chapter-goal-banner">
-            <span class="hero-eyebrow">${esc(ch.code)} · ${esc(ch.meta.tag)}</span>
-            <h1>${esc(ch.fullTitle)}</h1>
-            <p>${esc(ch.goal || ch.meta.heroSummary)}</p>
-          </header>
-
-          <section id="diag-anchor-${ch.chapter}" tabindex="-1" class="diag-mount"></section>
-
-          ${ch.coreSections
-            .map((sec) => {
-              const isDone = Boolean(state.readSections[sec.id]);
-              const cur = sec.curated || {};
-              return `
-              <article class="sec-article" id="${esc(sec.id)}" tabindex="-1">
-                <div class="sec-top">
-                  <div>
-                    <span class="sec-num">SECTION ${esc(sec.secNo)}</span>
-                    <h2 class="sec-title">${esc(sec.secNo)} ${esc(sec.title)}</h2>
-                  </div>
-                  <span class="sec-status-pill ${isDone ? "is-done" : ""}" data-sec-badge="${esc(sec.id)}">
-                    ${isDone ? "✓ 학습 완료" : "학습 전"}
-                  </span>
-                </div>
-
-                <div class="sec-takeaway">${esc(cur.heroTakeaway)}</div>
-
-                <div class="tag-row">
-                  ${(cur.tags || []).map((t) => `<span class="concept-tag"># ${esc(t)}</span>`).join("")}
-                </div>
-
-                <div class="bento-grid">
-                  ${(cur.bentoCards || [])
+        <!-- Zone 2: Signature Sticky Pinned Story Stage (apple-scrollytelling) -->
+        ${
+          stage.beats && stage.beats.length
+            ? `
+          <section id="pinned-stage-ch${ch.chapter}" tabindex="-1" class="apple-theater-stage" aria-label="${esc(ch.code)} 인터랙티브 스크롤 스토리 스테이지">
+            <div class="theater-header">
+              <div>
+                <span class="theater-kicker">${esc(stage.kicker)}</span>
+                <h2>${esc(stage.title)}</h2>
+                <p class="theater-sub">${esc(stage.subtitle)}</p>
+              </div>
+              <div class="theater-hud">
+                <span id="stage-beat-lbl-${ch.chapter}">BEAT 01 / 0${stage.beats.length}</span>
+                <span id="stage-pct-${ch.chapter}">0%</span>
+                <div class="theater-dot-nav">
+                  ${stage.beats
                     .map(
-                      (b) => `
-                    <div class="bento-card">
-                      <span class="bento-badge">${esc(b.badge)}</span>
-                      <h4>${esc(b.title)}</h4>
-                      <p>${esc(b.summary)}</p>
-                    </div>
-                  `
+                      (b, idx) =>
+                        `<button type="button" class="theater-dot-btn ${idx === 0 ? "is-active" : ""}" data-stage-dot="${idx}" aria-label="스토리 비트 ${esc(b.step)}">${esc(b.step)}</button>`
                     )
                     .join("")}
                 </div>
+              </div>
+            </div>
+            <div class="theater-sticky-grid">
+              <div class="theater-visual-sticky">
+                <div id="stage-svg-host-${ch.chapter}"></div>
+              </div>
+              <div class="theater-beats-track">
+                ${stage.beats
+                  .map(
+                    (b, idx) => `
+                  <button type="button" class="story-beat-card ${idx === 0 ? "is-active" : ""}" data-story-beat="${idx}">
+                    <div class="story-beat-top">
+                      <span class="story-beat-badge">${esc(b.badge)}</span>
+                      <span class="story-beat-metric">${esc(b.metricLabel)}: ${esc(b.metricValue)}</span>
+                    </div>
+                    <h3>${esc(b.step)}. ${esc(b.title)}</h3>
+                    <p>${esc(b.desc)}</p>
+                  </button>
+                `
+                  )
+                  .join("")}
+              </div>
+            </div>
+          </section>
+        `
+            : ""
+        }
 
-                <details class="deep-drawer">
-                  <summary>교재 원문 · 비교표(${sec.tableCount}개) · 하이퍼링크 전체 보기</summary>
-                  <div class="deep-body">
-                    ${(sec.introParagraphs || []).map((p) => `<p>${p.html || esc(p.plain)}</p>`).join("")}
-                    ${(sec.subsections || [])
+        <!-- Zone 3: Scrollytelling Sections + Full 81-Subsection Deep Notes + 60 Spec Tables -->
+        <div class="learn-layout">
+          <aside class="toc-sidebar" aria-label="절 목차 탐색">
+            <div class="toc-header">
+              <span>${esc(ch.code)} 학습 목차</span>
+              <span id="toc-progress-count">${ch.coreSections.filter((s) => state.readSections[s.id]).length}/${ch.coreSections.length}절 완료</span>
+            </div>
+            <nav class="toc-nav" id="chapter-toc-nav">
+              <a href="#master-summary-ch${ch.chapter}"><span>★ 장 마스터 요약</span><span></span></a>
+              <a href="#pinned-stage-ch${ch.chapter}"><span>◆ 스크롤 스토리 스테이지</span><span></span></a>
+              ${ch.coreSections
+                .map(
+                  (s) =>
+                    `<a href="#${esc(s.id)}" data-toc-for="${esc(s.id)}"><span>${esc(s.secNo)} ${esc(s.title)}</span><span class="toc-check">${
+                      state.readSections[s.id] ? "✓" : ""
+                    }</span></a>`
+                )
+                .join("")}
+              ${
+                ch.activitySection && ch.activitySection.activities && ch.activitySection.activities.length
+                  ? `<a href="#activity-anchor-${ch.chapter}"><span>★ 수업활동 가이드</span><span></span></a>`
+                  : ""
+              }
+            </nav>
+          </aside>
+
+          <div class="learn-content">
+            ${ch.coreSections
+              .map((sec) => {
+                const isDone = Boolean(state.readSections[sec.id]);
+                const cur = sec.curated || {};
+                const subs = sec.subsections || [];
+                return `
+                <article class="sec-article" id="${esc(sec.id)}" tabindex="-1">
+                  <div class="sec-top">
+                    <div>
+                      <span class="sec-num">SECTION ${esc(sec.secNo)}</span>
+                      <h2 class="sec-title">${esc(sec.secNo)} ${esc(sec.title)}</h2>
+                    </div>
+                    <span class="sec-status-pill ${isDone ? "is-done" : ""}" data-sec-badge="${esc(sec.id)}">
+                      ${isDone ? "✓ 학습 완료" : "학습 전"}
+                    </span>
+                  </div>
+
+                  <div class="sec-takeaway">${esc(cur.heroTakeaway)}</div>
+
+                  ${cur.sectionSummary ? `<div class="sec-synthesis-lead">${esc(cur.sectionSummary)}</div>` : ""}
+
+                  <div class="tag-row">
+                    ${(cur.tags || []).map((t) => `<span class="concept-tag"># ${esc(t)}</span>`).join("")}
+                  </div>
+
+                  <div class="bento-grid">
+                    ${(cur.bentoCards || [])
                       .map(
-                        (sub) => `
+                        (b) => `
+                      <div class="bento-card">
+                        <span class="bento-badge">${esc(b.badge)}</span>
+                        <h4>${esc(b.title)}</h4>
+                        <p>${esc(b.summary)}</p>
+                      </div>
+                    `
+                      )
+                      .join("")}
+                  </div>
+
+                  <!-- Subsection Structured Deep Notes + Direct Spec Tables -->
+                  <div class="subsec-study-stack">
+                    ${subs
+                      .map((sub) => {
+                        const sn = sub.studyNote || {};
+                        const dialogues = sn.clinicalDialogues || [];
+                        const tables = sub.tables || [];
+                        return `
+                        <section class="subsec-card" aria-label="${esc(sub.subNo)} ${esc(sub.title)}">
+                          <div class="subsec-head">
+                            <h3>${esc(sub.subNo)} ${esc(sub.title)}</h3>
+                            ${tables.length ? `<span class="concept-tag">표 ${tables.length}개 포함</span>` : ""}
+                          </div>
+                          ${sn.coreLead ? `<p class="subsec-lead">${sn.coreLead.html || esc(sn.coreLead.plain)}</p>` : ""}
+                          ${
+                            sn.keyPoints && sn.keyPoints.length
+                              ? `<ul class="subsec-points">${sn.keyPoints
+                                  .map((pt) => `<li>${pt.html || esc(pt.plain)}</li>`)
+                                  .join("")}</ul>`
+                              : ""
+                          }
+                          ${
+                            sn.keyTerms && sn.keyTerms.length
+                              ? `<div class="subsec-term-row">${sn.keyTerms
+                                  .map((kt) => `<span class="term-chip">${esc(kt)}</span>`)
+                                  .join("")}</div>`
+                              : ""
+                          }
+                          ${
+                            dialogues.length
+                              ? `
+                            <div class="clinical-dialogue-box">
+                              <span class="clinical-dialogue-title">임상 사례 · 축어록 핵심 발췌</span>
+                              ${dialogues.map((d) => `<p>${d.html || esc(d.plain)}</p>`).join("")}
+                            </div>
+                          `
+                              : ""
+                          }
+                          ${tables.map((t) => `<div class="spec-table-card">${renderTableHtml(t)}</div>`).join("")}
+                        </section>
+                      `;
+                      })
+                      .join("")}
+                  </div>
+
+                  ${
+                    cur.inlineWidgetId
+                      ? `<section class="inline-viz-mount" data-sec-widget="${esc(cur.inlineWidgetId)}"></section>`
+                      : ""
+                  }
+
+                  <details class="deep-drawer">
+                    <summary>교재 원문 전체(${subs.length}개 소절) 및 참고 링크 원문 보기</summary>
+                    <div class="deep-body">
+                      ${(sec.introParagraphs || []).map((p) => `<p>${p.html || esc(p.plain)}</p>`).join("")}
+                      ${subs
+                        .map(
+                          (sub) => `
+                        <div class="deep-sub">
+                          <h4>${esc(sub.subNo)} ${esc(sub.title)}</h4>
+                          ${(sub.paragraphs || []).map((p) => `<p>${p.html || esc(p.plain)}</p>`).join("")}
+                          ${(sub.tables || []).map((t) => renderTableHtml(t)).join("")}
+                        </div>
+                      `
+                        )
+                        .join("")}
+                    </div>
+                  </details>
+                  <footer class="sec-footer">
+                    <button
+                      type="button"
+                      class="btn complete-btn ${isDone ? "is-done" : ""}"
+                      data-toggle-read="${esc(sec.id)}"
+                      aria-pressed="${isDone ? "true" : "false"}"
+                    ><span aria-hidden="true">${isDone ? "✓" : "○"}</span> ${esc(sec.secNo)}절 학습 완료 체크</button>
+                  </footer>
+                </article>
+              `;
+              })
+              .join("")}
+
+            ${
+              ch.activitySection && ch.activitySection.activities && ch.activitySection.activities.length
+                ? `
+              <section id="activity-anchor-${ch.chapter}" tabindex="-1" class="sec-article">
+                <span class="sec-num">CLASSROOM ACTIVITY · ${esc(ch.activitySection.secNo)}</span>
+                <h2 class="sec-title">${esc(ch.activitySection.title)}</h2>
+                <details class="deep-drawer">
+                  <summary>대학원·교직 수업활동 안내 및 활동지 펼치기 (${ch.activitySection.activities.length}개 활동)</summary>
+                  <div class="deep-body">
+                    ${ch.activitySection.activities
+                      .map(
+                        (act) => `
                       <div class="deep-sub">
-                        <h4>${esc(sub.subNo)} ${esc(sub.title)}</h4>
-                        ${(sub.paragraphs || []).map((p) => `<p>${p.html || esc(p.plain)}</p>`).join("")}
-                        ${(sub.tables || []).map((t) => renderTableHtml(t)).join("")}
+                        <h4>${esc(act.subNo)} ${esc(act.title)}</h4>
+                        ${(act.paragraphs || []).map((p) => `<p>${p.html || esc(p.plain)}</p>`).join("")}
+                        ${(act.tables || []).map((t) => renderTableHtml(t)).join("")}
                       </div>
                     `
                       )
                       .join("")}
                   </div>
                 </details>
-                <footer class="sec-footer">
-                  <button
-                    type="button"
-                    class="btn complete-btn ${isDone ? "is-done" : ""}"
-                    data-toggle-read="${esc(sec.id)}"
-                    aria-pressed="${isDone ? "true" : "false"}"
-                  ><span aria-hidden="true">${isDone ? "✓" : "○"}</span> ${esc(sec.secNo)}절 학습 완료 체크</button>
-                </footer>
-              </article>
-            `;
-            })
-            .join("")}
+              </section>
+            `
+                : ""
+            }
 
-          ${
-            ch.activitySection && ch.activitySection.activities && ch.activitySection.activities.length
-              ? `
-            <section id="activity-anchor-${ch.chapter}" tabindex="-1" class="sec-article">
-              <span class="sec-num">CLASSROOM ACTIVITY · ${esc(ch.activitySection.secNo)}</span>
-              <h2 class="sec-title">${esc(ch.activitySection.title)}</h2>
-              <details class="deep-drawer">
-                <summary>대학원·교직 수업활동 안내 및 활동지 펼치기 (${ch.activitySection.activities.length}개 활동)</summary>
-                <div class="deep-body">
-                  ${ch.activitySection.activities
-                    .map(
-                      (act) => `
-                    <div class="deep-sub">
-                      <h4>${esc(act.subNo)} ${esc(act.title)}</h4>
-                      ${(act.paragraphs || []).map((p) => `<p>${p.html || esc(p.plain)}</p>`).join("")}
-                      ${(act.tables || []).map((t) => renderTableHtml(t)).join("")}
-                    </div>
-                  `
-                    )
-                    .join("")}
-                </div>
-              </details>
-            </section>
-          `
-              : ""
-          }
-
-          <div class="flow-gate-card">
-            <div>
-              <span class="concept-tag" id="learn-gate-count" style="background:var(--accent-soft);color:var(--accent);margin-bottom:8px">${ch.coreSections.filter((s) => state.readSections[s.id]).length}/${ch.coreSections.length}절 학습 완료</span>
-              <h3>${esc(ch.code)} 핵심 요약 학습을 마치셨나요?</h3>
-              <p>각 절 하단에서 완료 체크를 마쳤다면 바로 제0${ch.chapter}장 객관식 연습문제로 이해도를 확인하고, 실상황 논술형으로 연결해 보세요.</p>
-            </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap">
-              <button type="button" class="btn btn-primary" id="cta-to-mcq">2단계: 제0${ch.chapter}장 객관식 풀러 가기 →</button>
-              <button type="button" class="btn" id="cta-to-essay">3단계: 제0${ch.chapter}장 논술형 풀기 →</button>
+            <div class="flow-gate-card">
+              <div>
+                <span class="concept-tag" id="learn-gate-count" style="background:var(--accent-soft);color:var(--accent);margin-bottom:8px">${ch.coreSections.filter((s) => state.readSections[s.id]).length}/${ch.coreSections.length}절 학습 완료</span>
+                <h3>${esc(ch.code)} 핵심 요약 학습을 마치셨나요?</h3>
+                <p>각 절 하단에서 완료 체크를 마쳤다면 바로 제0${ch.chapter}장 객관식 연습문제로 이해도를 확인하고, 실상황 논술형으로 연결해 보세요.</p>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button type="button" class="btn btn-primary" id="cta-to-mcq">2단계: 제0${ch.chapter}장 객관식 풀러 가기 →</button>
+                <button type="button" class="btn" id="cta-to-essay">3단계: 제0${ch.chapter}장 논술형 풀기 →</button>
+              </div>
             </div>
           </div>
         </div>
       </div>
     `;
 
-    // Render interactive diagram for this chapter
-    DIAGRAMS.renderChapterDiagram(root.querySelector(`#diag-anchor-${ch.chapter}`), ch);
+    // Mount all section-level inline interactive widgets
+    root.querySelectorAll("[data-sec-widget]").forEach((el) => {
+      if (DIAGRAMS && typeof DIAGRAMS.renderSectionWidget === "function") {
+        DIAGRAMS.renderSectionWidget(el, el.dataset.secWidget, ch);
+      }
+    });
+
+    // Quick jump buttons inside Master Synthesis Panel
+    root.querySelectorAll("[data-jump-pillar-sec]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const target = document.getElementById(btn.dataset.jumpPillarSec);
+        if (window.ScrollyEngine) window.ScrollyEngine.scrollToElement(target);
+        else if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
 
     function syncSectionUi(secId, done) {
       const sec = ch.coreSections.find((s) => s.id === secId);
@@ -653,6 +820,7 @@
       if (cntEl) cntEl.textContent = `${doneCount}/${ch.coreSections.length}절 완료`;
       const gateCntEl = root.querySelector("#learn-gate-count");
       if (gateCntEl) gateCntEl.textContent = `${doneCount}/${ch.coreSections.length}절 학습 완료`;
+      if (window.ScrollyEngine) window.ScrollyEngine.syncSectionPillDone(ch);
     }
 
     // Toggle read button listeners
@@ -668,6 +836,7 @@
     root.querySelector("#cta-to-essay").addEventListener("click", () => navigate({ view: "chapter", chapter: ch.chapter, mode: "essay" }));
 
     setupScrollspy(root, ch);
+    if (window.ScrollyEngine) window.ScrollyEngine.mountChapterLearn(root, ch);
   }
 
   function setupScrollspy(root, ch) {
@@ -2072,6 +2241,9 @@
       scrollspyObserver.disconnect();
       scrollspyObserver = null;
     }
+    if (!(ui.view === "chapter" && ui.mode === "learn") && window.ScrollyEngine) {
+      window.ScrollyEngine.teardown();
+    }
     if (ui.view === "dashboard") {
       renderDashboard(root);
     } else if (ui.view === "exam") {
@@ -2087,6 +2259,7 @@
 
   async function init() {
     await STORE.hydrateFromIdbIfEmpty();
+    if (window.ScrollyEngine) window.ScrollyEngine.initGlobalChrome();
     let hasSavedPrefs = false;
     try {
       hasSavedPrefs = Boolean(window.localStorage.getItem("school_counseling_vol1_state_v1"));
