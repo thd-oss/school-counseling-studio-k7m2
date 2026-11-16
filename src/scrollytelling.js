@@ -203,36 +203,43 @@
     activeBeats = stageEl ? Array.from(stageEl.querySelectorAll("[data-story-beat]")) : [];
     const beatDots = stageEl ? Array.from(stageEl.querySelectorAll("[data-stage-dot]")) : [];
 
-    function activateBeat(beatIdx, rawProgress) {
-      const clampedIdx = Math.max(0, Math.min(activeBeats.length - 1, beatIdx));
-      const p = Math.max(0, Math.min(1, rawProgress ?? clampedIdx / Math.max(1, activeBeats.length - 1)));
+    function activateBeat(beatIdx, rawProgress, explicitLocalT) {
+      const n = Math.max(1, activeBeats.length);
+      const clampedIdx = Math.max(0, Math.min(n - 1, beatIdx));
+      const p = Math.max(0, Math.min(1, rawProgress ?? clampedIdx / Math.max(1, n - 1)));
+      const localT =
+        typeof explicitLocalT === "number"
+          ? Math.max(0, Math.min(1, explicitLocalT))
+          : prefersReducedMotion()
+          ? 1
+          : Math.max(0, Math.min(1, p * n - clampedIdx));
       activeBeats.forEach((b, i) => b.classList.toggle("is-active", i === clampedIdx));
       beatDots.forEach((d, i) => {
         d.classList.toggle("is-active", i === clampedIdx);
         d.setAttribute("aria-pressed", i === clampedIdx ? "true" : "false");
       });
       if (hudPct) hudPct.textContent = `${Math.round(p * 100)}%`;
-      if (hudBeat) hudBeat.textContent = `BEAT 0${clampedIdx + 1} / 0${activeBeats.length || 4}`;
+      if (hudBeat) hudBeat.textContent = `BEAT 0${clampedIdx + 1} / 0${n || 4}`;
       if (svgCtrl && typeof svgCtrl.updateBeat === "function") {
-        svgCtrl.updateBeat(clampedIdx, p);
+        svgCtrl.updateBeat(clampedIdx, p, localT);
       }
     }
 
     activeBeats.forEach((beatEl, i) => {
       beatEl.addEventListener("click", () => {
-        activateBeat(i, i / Math.max(1, activeBeats.length - 1));
+        activateBeat(i, i / Math.max(1, activeBeats.length - 1), 1);
       });
     });
     beatDots.forEach((dotEl) => {
       dotEl.addEventListener("click", () => {
         const i = parseInt(dotEl.dataset.stageDot, 10) || 0;
-        activateBeat(i, i / Math.max(1, activeBeats.length - 1));
+        activateBeat(i, i / Math.max(1, activeBeats.length - 1), 1);
         const targetBeat = activeBeats[i];
         if (targetBeat) scrollToElement(targetBeat);
       });
     });
 
-    if (activeBeats.length) activateBeat(0, 0);
+    if (activeBeats.length) activateBeat(0, 0, 1);
 
     // 2. Mount Floating Liquid Glass Section Pill
     renderFloatingSectionPill(ch);
@@ -314,7 +321,7 @@
             if (r.top <= (window.innerHeight || 800) * 0.55) bestBeat = idx;
           }
         });
-        activateBeat(bestBeat, bestBeat / Math.max(1, activeBeats.length - 1));
+        activateBeat(bestBeat, bestBeat / Math.max(1, activeBeats.length - 1), 1);
       }
     }
 

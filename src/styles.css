@@ -42,6 +42,23 @@
   --subnav-h: 0px;
   --target-min: 24px;
   --font-sans: "Pretendard Variable", "Pretendard", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  --viz-canvas: #f8fafc;
+  --viz-surface: #ffffff;
+  --viz-surface-alt: #eef2f6;
+  --viz-grid: rgba(15, 23, 42, 0.08);
+  --viz-keyline: rgba(15, 23, 42, 0.36);
+  --viz-ink: #0f172a;
+  --viz-ink-sub: #475569;
+  --viz-primary: #0066cc;
+  --viz-primary-soft: rgba(0, 102, 204, 0.12);
+  --viz-depth: #4f46e5;
+  --viz-depth-soft: rgba(79, 70, 229, 0.12);
+  --viz-safe: #15803d;
+  --viz-safe-soft: rgba(21, 128, 61, 0.12);
+  --viz-warn: #b45309;
+  --viz-warn-soft: rgba(180, 83, 9, 0.12);
+  --viz-critical: #dc2626;
+  --viz-critical-soft: rgba(220, 38, 38, 0.12);
   color-scheme: light;
 }
 
@@ -74,6 +91,23 @@
   --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.35);
   --shadow-md: 0 10px 32px rgba(0, 0, 0, 0.48);
   --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.65);
+  --viz-canvas: #0b0f17;
+  --viz-surface: #131926;
+  --viz-surface-alt: #1b2335;
+  --viz-grid: rgba(255, 255, 255, 0.09);
+  --viz-keyline: rgba(255, 255, 255, 0.32);
+  --viz-ink: #f8fafc;
+  --viz-ink-sub: #cbd5e1;
+  --viz-primary: #4ea8ff;
+  --viz-primary-soft: rgba(78, 168, 255, 0.18);
+  --viz-depth: #8b89ff;
+  --viz-depth-soft: rgba(139, 137, 255, 0.18);
+  --viz-safe: #34d399;
+  --viz-safe-soft: rgba(52, 211, 153, 0.18);
+  --viz-warn: #fbbf24;
+  --viz-warn-soft: rgba(251, 191, 36, 0.18);
+  --viz-critical: #f87171;
+  --viz-critical-soft: rgba(248, 113, 113, 0.18);
   color-scheme: dark;
 }
 
@@ -1760,6 +1794,23 @@ dialog.study-dialog::backdrop {
 
 /* Zone 2: Dark Optical Apple Pinned Story Stage */
 .apple-theater-stage {
+  --viz-canvas: #070a11;
+  --viz-surface: #111726;
+  --viz-surface-alt: #182034;
+  --viz-grid: rgba(255, 255, 255, 0.08);
+  --viz-keyline: rgba(255, 255, 255, 0.32);
+  --viz-ink: #f8fafc;
+  --viz-ink-sub: #cbd5e1;
+  --viz-primary: #4ea8ff;
+  --viz-primary-soft: rgba(78, 168, 255, 0.18);
+  --viz-depth: #8b89ff;
+  --viz-depth-soft: rgba(139, 137, 255, 0.18);
+  --viz-safe: #34d399;
+  --viz-safe-soft: rgba(52, 211, 153, 0.18);
+  --viz-warn: #fbbf24;
+  --viz-warn-soft: rgba(251, 191, 36, 0.18);
+  --viz-critical: #f87171;
+  --viz-critical-soft: rgba(248, 113, 113, 0.18);
   background: #07090e;
   color: #f5f5f7;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -2061,6 +2112,156 @@ dialog.study-dialog::backdrop {
   color: var(--text-muted);
 }
 
+/* ---------- Apple Optical Diagram Studio & Telemetry HUD ---------- */
+.viz-ctrl-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.viz-ctrl-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-block-size: var(--target-min);
+  padding: 6px 13px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--viz-keyline);
+  background: var(--viz-surface-alt);
+  color: var(--viz-ink-sub);
+  font-size: 0.81rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, transform 180ms ease;
+}
+.viz-ctrl-pill:hover {
+  border-color: var(--viz-primary);
+  color: var(--viz-ink);
+}
+.viz-ctrl-pill.is-active,
+.viz-ctrl-pill[aria-pressed="true"] {
+  background: var(--viz-primary);
+  border-color: var(--viz-primary);
+  color: #ffffff;
+}
+.viz-ctrl-pill:focus-visible,
+.viz-node:focus-visible {
+  outline: 2.5px solid var(--viz-primary);
+  outline-offset: 2px;
+}
+
+.viz-stage-frame {
+  background: var(--viz-canvas);
+  border: 1px solid var(--viz-keyline);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.viz-svg {
+  width: 100%;
+  max-inline-size: 100%;
+  height: auto;
+  display: block;
+  font-variant-numeric: tabular-nums;
+}
+.viz-node {
+  cursor: pointer;
+  transition: opacity 220ms ease, transform 260ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.viz-node:hover {
+  opacity: 0.94;
+}
+.viz-anim-path {
+  transition: stroke-dashoffset 480ms cubic-bezier(0.23, 1, 0.32, 1), opacity 240ms ease;
+}
+
+.viz-telemetry-hud {
+  background: var(--bg-alt);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+}
+.viz-tel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13.5rem), 1fr));
+  gap: 10px;
+}
+.viz-tel-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+}
+.viz-tel-card.is-primary {
+  background: var(--viz-primary-soft);
+  border-color: var(--viz-primary);
+}
+.viz-tel-card.is-safe {
+  background: var(--viz-safe-soft);
+  border-color: var(--viz-safe);
+}
+.viz-tel-card.is-warn {
+  background: var(--viz-warn-soft);
+  border-color: var(--viz-warn);
+}
+.viz-tel-card.is-critical {
+  background: var(--viz-critical-soft);
+  border-color: var(--viz-critical);
+}
+.viz-tel-card.is-depth {
+  background: var(--viz-depth-soft);
+  border-color: var(--viz-depth);
+}
+.viz-tel-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: var(--viz-primary);
+  margin-bottom: 4px;
+}
+.viz-tel-card.is-safe .viz-tel-kicker { color: var(--viz-safe); }
+.viz-tel-card.is-warn .viz-tel-kicker { color: var(--viz-warn); }
+.viz-tel-card.is-critical .viz-tel-kicker { color: var(--viz-critical); }
+.viz-tel-card.is-depth .viz-tel-kicker { color: var(--viz-depth); }
+.viz-tel-card h5 {
+  margin: 0 0 6px;
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--text);
+}
+.viz-tel-card p,
+.viz-tel-card li {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.viz-tel-card ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+}
+
+.viz-select-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.viz-select-label {
+  display: grid;
+  gap: 5px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
 /* Liquid Glass Optical Chrome (Floating Section Pill ONLY) */
 .liquid-pill {
   position: fixed;
@@ -2156,10 +2357,21 @@ dialog.study-dialog::backdrop {
   white-space: nowrap;
 }
 
-/* CSS Scroll-Driven Subsection Reveal (Modern Web Guidance compliant) */
+/* CSS Scroll-Driven Subsection & Diagram Reveal (Modern Web Guidance compliant) */
 @keyframes subsec-enter {
   from {
     opacity: 0.35;
+    transform: translateY(16px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes viz-studio-enter {
+  from {
+    opacity: 0.42;
     transform: translateY(16px) scale(0.985);
   }
   to {
@@ -2175,19 +2387,53 @@ dialog.study-dialog::backdrop {
       animation-timeline: view();
       animation-range: entry 0% cover 22%;
     }
+    .inline-viz-studio {
+      animation: viz-studio-enter linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 24%;
+    }
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .subsec-card {
+  .subsec-card,
+  .inline-viz-studio {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
   }
   .story-beat-card,
   .pillar-card,
-  .pill-dot {
+  .pill-dot,
+  .viz-ctrl-pill,
+  .viz-node,
+  .viz-anim-path,
+  .viz-svg * {
     transition: none !important;
+  }
+}
+
+@media (forced-colors: active) {
+  .viz-stage-frame,
+  .viz-telemetry-hud,
+  .viz-tel-card,
+  .viz-ctrl-pill {
+    background: Canvas;
+    color: CanvasText;
+    border: 1.5px solid CanvasText;
+  }
+  .viz-ctrl-pill.is-active,
+  .viz-ctrl-pill[aria-pressed="true"] {
+    background: Highlight;
+    color: HighlightText;
+    border-color: Highlight;
+  }
+  .viz-tel-card.is-primary,
+  .viz-tel-card.is-safe,
+  .viz-tel-card.is-warn,
+  .viz-tel-card.is-critical,
+  .viz-tel-card.is-depth {
+    outline: 2px solid Highlight;
   }
 }
 
@@ -2212,8 +2458,15 @@ dialog.study-dialog::backdrop {
   .chapter-showcase-hero,
   .master-summary-panel,
   .apple-theater-stage,
-  .subsec-card {
+  .subsec-card,
+  .inline-viz-studio {
     padding: 1.15rem 1rem;
+  }
+  .viz-stage-frame {
+    padding: 6px;
+  }
+  .viz-select-pair {
+    grid-template-columns: minmax(0, 1fr);
   }
   .liquid-pill {
     padding: 8px 12px;
